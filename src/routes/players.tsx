@@ -45,7 +45,7 @@ function PlayersPage() {
       {/* Player Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(p => (
-          <Link key={p.id} to="/profile" className="stat-card block">
+          <div key={p.id} className="stat-card block cursor-pointer">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 bg-accent flex items-center justify-center text-sm font-bold shrink-0">#{p.jersey}</div>
               <div className="flex-1 min-w-0">
@@ -86,7 +86,7 @@ function PlayersPage() {
                 <div className="h-1 bg-accent"><div className="h-full bg-cricket-red" style={{ width: `${p.consistency}%` }} /></div>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
