@@ -28,9 +28,7 @@ function PlayersPage() {
           <h1 className="text-xl font-bold tracking-tight">Players</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{players.length} players in squad</p>
         </div>
-        <Link to="/add-player">
-          <Button variant="cricket" size="sm">+ Add Player</Button>
-        </Link>
+        <Button variant="cricket" size="sm" onClick={() => setShowAddPlayer(true)}>+ Add Player</Button>
       </div>
 
       {/* Filters */}
