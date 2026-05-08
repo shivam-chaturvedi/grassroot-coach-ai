@@ -75,6 +75,7 @@ function MatchesPage() {
           </tbody>
         </table>
       </div>
+      <CreateMatchModal open={showCreateMatch} onClose={() => setShowCreateMatch(false)} />
     </div>
   );
 }
