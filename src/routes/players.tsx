@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { players } from "@/lib/mock-data";
 import { Search, Filter, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AddPlayerModal } from "@/components/AddPlayerModal";
 
 export const Route = createFileRoute("/players")({
   component: PlayersPage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/players")({
 
 function PlayersPage() {
   const [search, setSearch] = useState("");
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [roleFilter, setRoleFilter] = useState("All");
 
   const filtered = players.filter(p => {
@@ -26,9 +28,7 @@ function PlayersPage() {
           <h1 className="text-xl font-bold tracking-tight">Players</h1>
           <p className="text-xs text-muted-foreground mt-0.5">{players.length} players in squad</p>
         </div>
-        <Link to="/add-player">
-          <Button variant="cricket" size="sm">+ Add Player</Button>
-        </Link>
+        <Button variant="cricket" size="sm" onClick={() => setShowAddPlayer(true)}>+ Add Player</Button>
       </div>
 
       {/* Filters */}
@@ -45,7 +45,7 @@ function PlayersPage() {
       {/* Player Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
         {filtered.map(p => (
-          <Link key={p.id} to="/profile" className="stat-card block">
+          <div key={p.id} className="stat-card block cursor-pointer">
             <div className="flex items-start gap-3">
               <div className="w-12 h-12 bg-accent flex items-center justify-center text-sm font-bold shrink-0">#{p.jersey}</div>
               <div className="flex-1 min-w-0">
@@ -86,9 +86,10 @@ function PlayersPage() {
                 <div className="h-1 bg-accent"><div className="h-full bg-cricket-red" style={{ width: `${p.consistency}%` }} /></div>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
+      <AddPlayerModal open={showAddPlayer} onClose={() => setShowAddPlayer(false)} />
     </div>
   );
 }
