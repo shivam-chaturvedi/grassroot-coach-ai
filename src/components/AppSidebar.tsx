@@ -7,11 +7,6 @@ import {
   Brain,
   FileText,
   School,
-  Settings,
-  PlusCircle,
-  ClipboardList,
-  UserPlus,
-  Search,
   Activity,
   X,
 } from "lucide-react";
@@ -20,16 +15,11 @@ import { currentUser } from "@/lib/mock-data";
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Matches", url: "/matches", icon: Swords },
-  { title: "Create Match", url: "/create-match", icon: PlusCircle },
-  { title: "Add Stats", url: "/add-stats", icon: ClipboardList },
   { title: "Players", url: "/players", icon: Users },
-  { title: "Add Player", url: "/add-player", icon: UserPlus },
   { title: "AI Analytics", url: "/analytics", icon: Brain },
   { title: "Team", url: "/team", icon: Activity },
   { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Scout", url: "/scout", icon: Search },
   { title: "Academy", url: "/academy", icon: School },
-  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -37,7 +27,6 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
 
   return (
     <>
-      {/* Overlay for mobile */}
       {open && (
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
       )}
@@ -45,7 +34,6 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
         className={`fixed top-0 left-0 h-full w-60 bg-sidebar text-sidebar-foreground z-50 transition-transform duration-200 ease-out flex flex-col
           ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto`}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-cricket-red flex items-center justify-center">
@@ -61,7 +49,6 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 py-3 overflow-y-auto">
           <div className="px-4 mb-3">
             <div className="section-title text-sidebar-foreground/40">Navigation</div>
@@ -82,7 +69,6 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           })}
         </nav>
 
-        {/* User section */}
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-cricket-red flex items-center justify-center text-xs font-bold text-primary-foreground">

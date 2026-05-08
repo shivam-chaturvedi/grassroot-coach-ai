@@ -4,12 +4,12 @@ import {
   Brain, ChevronRight, Trophy, Activity,
 } from "lucide-react";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   dashboardStats, upcomingMatches, recentMatches, aiRecommendations,
-  workloadData, strikeRateData, winProbData, leaderboard, notifications, players,
+  workloadData, strikeRateData, leaderboard, notifications, players,
 } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({
@@ -112,21 +112,6 @@ function Dashboard() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* Win Probability */}
-          <div className="stat-card">
-            <div className="section-title">Win Probability — Last Match</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={winProbData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="over" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-                <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" domain={[0, 100]} />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", fontSize: 11 }} />
-                <Area type="monotone" dataKey="team" stroke="var(--cricket-green)" fill="var(--cricket-green)" fillOpacity={0.15} strokeWidth={2} />
-                <Area type="monotone" dataKey="opp" stroke="var(--cricket-red)" fill="var(--cricket-red)" fillOpacity={0.1} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
           </div>
 
           {/* Recent Matches */}
