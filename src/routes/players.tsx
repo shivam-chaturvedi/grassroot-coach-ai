@@ -89,6 +89,7 @@ function PlayersPage() {
           </div>
         ))}
       </div>
+      <AddPlayerModal open={showAddPlayer} onClose={() => setShowAddPlayer(false)} />
     </div>
   );
 }
