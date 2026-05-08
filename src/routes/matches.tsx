@@ -13,6 +13,8 @@ export const Route = createFileRoute("/matches")({
 });
 
 function MatchesPage() {
+  const [showCreateMatch, setShowCreateMatch] = useState(false);
+
   return (
     <div className="p-4 lg:p-6 space-y-5">
       <div className="flex items-center justify-between">
@@ -20,9 +22,9 @@ function MatchesPage() {
           <h1 className="text-xl font-bold tracking-tight">Matches</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Manage and track all matches</p>
         </div>
-        <Link to="/create-match">
-          <Button variant="cricket" size="sm"><Plus className="w-3.5 h-3.5" /> New Match</Button>
-        </Link>
+        <Button variant="cricket" size="sm" onClick={() => setShowCreateMatch(true)}>
+          <Plus className="w-3.5 h-3.5" /> New Match
+        </Button>
       </div>
 
       <div className="section-title">Upcoming</div>
