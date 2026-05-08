@@ -12,6 +12,7 @@ export const Route = createFileRoute("/players")({
 
 function PlayersPage() {
   const [search, setSearch] = useState("");
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [roleFilter, setRoleFilter] = useState("All");
 
   const filtered = players.filter(p => {
