@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { players } from "@/lib/mock-data";
 import { Search, Filter, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AddPlayerModal } from "@/components/AddPlayerModal";
 
 export const Route = createFileRoute("/players")({
   component: PlayersPage,
