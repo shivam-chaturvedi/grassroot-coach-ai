@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { matchTypes, players } from "@/lib/mock-data";
-import { Calendar, Clock, MapPin, Users, Swords } from "lucide-react";
+import { Users, UserPlus, ClipboardList } from "lucide-react";
+import { AddPlayerModal } from "@/components/AddPlayerModal";
+import { AddStatsModal } from "@/components/AddStatsModal";
 
 export const Route = createFileRoute("/create-match")({
   component: CreateMatchPage,
@@ -15,6 +17,8 @@ function CreateMatchPage() {
     matchType: "T20", ground: "", tossResult: "", tossWinner: "",
   });
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [showAddStats, setShowAddStats] = useState(false);
 
   const togglePlayer = (id: number) => {
     setSelectedPlayers(prev =>
@@ -24,9 +28,19 @@ function CreateMatchPage() {
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl space-y-5">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Create Match</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Set up a new match</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Create Match</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Set up a new match</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowAddPlayer(true)}>
+            <UserPlus className="w-3.5 h-3.5" /> Add Player
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowAddStats(true)}>
+            <ClipboardList className="w-3.5 h-3.5" /> Add Stats
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -81,7 +95,6 @@ function CreateMatchPage() {
           </div>
         </div>
 
-        {/* Squad Selection */}
         <div>
           <div className="section-title flex items-center gap-1.5">
             <Users className="w-3 h-3" /> Select Playing XI ({selectedPlayers.length}/11)
@@ -112,6 +125,9 @@ function CreateMatchPage() {
           <Button variant="outline">Cancel</Button>
         </div>
       </div>
+
+      <AddPlayerModal open={showAddPlayer} onClose={() => setShowAddPlayer(false)} />
+      <AddStatsModal open={showAddStats} onClose={() => setShowAddStats(false)} />
     </div>
   );
 }

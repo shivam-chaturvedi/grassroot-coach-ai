@@ -10,32 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TeamRouteImport } from './routes/team'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ScoutRouteImport } from './routes/scout'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlayersRouteImport } from './routes/players'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as CreateMatchRouteImport } from './routes/create-match'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as AddStatsRouteImport } from './routes/add-stats'
-import { Route as AddPlayerRouteImport } from './routes/add-player'
 import { Route as AcademyRouteImport } from './routes/academy'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TeamRoute = TeamRouteImport.update({
   id: '/team',
   path: '/team',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ScoutRoute = ScoutRouteImport.update({
-  id: '/scout',
-  path: '/scout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -68,16 +54,6 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AddStatsRoute = AddStatsRouteImport.update({
-  id: '/add-stats',
-  path: '/add-stats',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AddPlayerRoute = AddPlayerRouteImport.update({
-  id: '/add-player',
-  path: '/add-player',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AcademyRoute = AcademyRouteImport.update({
   id: '/academy',
   path: '/academy',
@@ -92,47 +68,35 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
-  '/add-player': typeof AddPlayerRoute
-  '/add-stats': typeof AddStatsRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
   '/matches': typeof MatchesRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/scout': typeof ScoutRoute
-  '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
-  '/add-player': typeof AddPlayerRoute
-  '/add-stats': typeof AddStatsRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
   '/matches': typeof MatchesRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/scout': typeof ScoutRoute
-  '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
-  '/add-player': typeof AddPlayerRoute
-  '/add-stats': typeof AddStatsRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
   '/matches': typeof MatchesRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
-  '/scout': typeof ScoutRoute
-  '/settings': typeof SettingsRoute
   '/team': typeof TeamRoute
 }
 export interface FileRouteTypes {
@@ -140,62 +104,46 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/academy'
-    | '/add-player'
-    | '/add-stats'
     | '/analytics'
     | '/create-match'
     | '/matches'
     | '/players'
     | '/profile'
     | '/reports'
-    | '/scout'
-    | '/settings'
     | '/team'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/academy'
-    | '/add-player'
-    | '/add-stats'
     | '/analytics'
     | '/create-match'
     | '/matches'
     | '/players'
     | '/profile'
     | '/reports'
-    | '/scout'
-    | '/settings'
     | '/team'
   id:
     | '__root__'
     | '/'
     | '/academy'
-    | '/add-player'
-    | '/add-stats'
     | '/analytics'
     | '/create-match'
     | '/matches'
     | '/players'
     | '/profile'
     | '/reports'
-    | '/scout'
-    | '/settings'
     | '/team'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcademyRoute: typeof AcademyRoute
-  AddPlayerRoute: typeof AddPlayerRoute
-  AddStatsRoute: typeof AddStatsRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CreateMatchRoute: typeof CreateMatchRoute
   MatchesRoute: typeof MatchesRoute
   PlayersRoute: typeof PlayersRoute
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
-  ScoutRoute: typeof ScoutRoute
-  SettingsRoute: typeof SettingsRoute
   TeamRoute: typeof TeamRoute
 }
 
@@ -206,20 +154,6 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof TeamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scout': {
-      id: '/scout'
-      path: '/scout'
-      fullPath: '/scout'
-      preLoaderRoute: typeof ScoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -264,20 +198,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/add-stats': {
-      id: '/add-stats'
-      path: '/add-stats'
-      fullPath: '/add-stats'
-      preLoaderRoute: typeof AddStatsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/add-player': {
-      id: '/add-player'
-      path: '/add-player'
-      fullPath: '/add-player'
-      preLoaderRoute: typeof AddPlayerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/academy': {
       id: '/academy'
       path: '/academy'
@@ -298,18 +218,24 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcademyRoute: AcademyRoute,
-  AddPlayerRoute: AddPlayerRoute,
-  AddStatsRoute: AddStatsRoute,
   AnalyticsRoute: AnalyticsRoute,
   CreateMatchRoute: CreateMatchRoute,
   MatchesRoute: MatchesRoute,
   PlayersRoute: PlayersRoute,
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
-  ScoutRoute: ScoutRoute,
-  SettingsRoute: SettingsRoute,
   TeamRoute: TeamRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
