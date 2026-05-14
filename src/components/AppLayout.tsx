@@ -10,7 +10,7 @@ export function AppLayout({ children }: { children?: React.ReactNode }) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex w-full">
+    <div className="h-screen flex w-full overflow-hidden">
       <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
