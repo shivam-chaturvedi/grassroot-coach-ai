@@ -31,8 +31,8 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
       )}
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-sidebar text-sidebar-foreground z-50 transition-transform duration-200 ease-out flex flex-col
-          ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static lg:z-auto`}
+        className={`fixed top-0 left-0 h-screen w-60 bg-sidebar text-sidebar-foreground z-50 transition-transform duration-200 ease-out flex flex-col
+          ${open ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:sticky lg:top-0 lg:z-auto lg:shrink-0`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
