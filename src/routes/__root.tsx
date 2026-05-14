@@ -1,15 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  Outlet,
-  Link,
-  createRootRouteWithContext,
-  useRouter,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
+import { Link, createRootRouteWithContext, useRouter } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-
-import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
   return (
@@ -66,44 +57,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CricketIQ — AI Cricket Analytics Platform" },
-      { name: "description", content: "AI-powered grassroots cricket analytics and coaching platform" },
-      { property: "og:title", content: "CricketIQ — AI Cricket Analytics Platform" },
-      { name: "twitter:title", content: "CricketIQ — AI Cricket Analytics Platform" },
-      { property: "og:description", content: "AI-powered grassroots cricket analytics and coaching platform" },
-      { name: "twitter:description", content: "AI-powered grassroots cricket analytics and coaching platform" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/84a2371b-e698-4b47-b5db-377102ebd6e3/id-preview-a3cd3b7c--6face7b5-7a2f-42fb-ab40-e1228fda7602.lovable.app-1778231274774.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/84a2371b-e698-4b47-b5db-377102ebd6e3/id-preview-a3cd3b7c--6face7b5-7a2f-42fb-ab40-e1228fda7602.lovable.app-1778231274774.png" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { property: "og:type", content: "website" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
