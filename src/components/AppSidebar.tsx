@@ -2,28 +2,57 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Swords,
-  BarChart3,
   Users,
   Brain,
   FileText,
   School,
   Activity,
   X,
+  UserCircle,
+  Inbox,
 } from "lucide-react";
-import { currentUser } from "@/lib/mock-data";
+import type { AcademyRow, ProfileRow } from "@/lib/supabase-api";
+import { formatEnumLabel } from "@/lib/supabase-api";
+import { canAccessStaffArea, canManageAcademyUi } from "@/lib/role-access";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Matches", url: "/matches", icon: Swords },
-  { title: "Players", url: "/players", icon: Users },
-  { title: "AI Analytics", url: "/analytics", icon: Brain },
-  { title: "Team", url: "/team", icon: Activity },
-  { title: "Reports", url: "/reports", icon: FileText },
-  { title: "Academy", url: "/academy", icon: School },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, staffOnly: false },
+  { title: "Matches", url: "/matches", icon: Swords, staffOnly: false },
+  { title: "Players", url: "/players", icon: Users, staffOnly: false },
+  { title: "Profile", url: "/profile", icon: UserCircle, staffOnly: false },
+  { title: "AI Analytics", url: "/analytics", icon: Brain, staffOnly: true },
+  { title: "Team", url: "/team", icon: Activity, staffOnly: true },
+  { title: "Reports", url: "/reports", icon: FileText, staffOnly: true },
+  { title: "Requests", url: "/requests", icon: Inbox, staffOnly: true, managerOnly: true },
+  { title: "Academy", url: "/academy", icon: School, staffOnly: true },
 ];
 
-export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function getInitials(name?: string | null) {
+  if (!name) return "C";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+export function AppSidebar({
+  open,
+  onClose,
+  profile,
+  academy,
+}: {
+  open: boolean;
+  onClose: () => void;
+  profile: ProfileRow | null;
+  academy: AcademyRow | null;
+}) {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.managerOnly) return canManageAcademyUi(profile?.role);
+    return !item.staffOnly || canAccessStaffArea(profile?.role);
+  });
 
   return (
     <>
@@ -53,7 +82,7 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="px-4 mb-3">
             <div className="section-title text-sidebar-foreground/40">Navigation</div>
           </div>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = currentPath === item.url || (item.url !== "/" && currentPath.startsWith(item.url));
             return (
               <Link
@@ -72,11 +101,20 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-cricket-red flex items-center justify-center text-xs font-bold text-primary-foreground">
-              {currentUser.avatar}
+              {getInitials(profile?.display_name ?? profile?.full_name)}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold truncate">{currentUser.name}</div>
-              <div className="text-[0.6rem] text-sidebar-foreground/50 uppercase tracking-wider">{currentUser.role}</div>
+              <div className="text-xs font-semibold truncate">
+                {profile?.display_name ?? profile?.full_name ?? "Signed in user"}
+              </div>
+              <div className="text-[0.6rem] text-sidebar-foreground/50 uppercase tracking-wider">
+                {formatEnumLabel(profile?.role ?? "player")}
+              </div>
+              {academy && (
+                <div className="text-[0.6rem] text-sidebar-foreground/50 truncate">
+                  {academy.name}
+                </div>
+              )}
             </div>
           </div>
         </div>

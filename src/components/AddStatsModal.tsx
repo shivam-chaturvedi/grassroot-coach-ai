@@ -1,14 +1,60 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { players, recentMatches } from "@/lib/mock-data";
 import { Save, X } from "lucide-react";
+import { createMatchStats, fetchMatches, fetchPlayers, fetchProfile, fetchSession } from "@/lib/supabase-api";
 
 export function AddStatsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
+  const profileQuery = useQuery({
+    queryKey: ["profile", sessionQuery.data?.user.id],
+    queryFn: () => fetchProfile(sessionQuery.data!.user.id),
+    enabled: !!sessionQuery.data?.user.id,
+  });
+  const matchesQuery = useQuery({
+    queryKey: ["matches", profileQuery.data?.academy_id],
+    queryFn: () => fetchMatches(profileQuery.data!.academy_id!),
+    enabled: !!profileQuery.data?.academy_id,
+  });
+  const playersQuery = useQuery({
+    queryKey: ["players", profileQuery.data?.academy_id],
+    queryFn: () => fetchPlayers(profileQuery.data!.academy_id!),
+    enabled: !!profileQuery.data?.academy_id,
+  });
   const [selectedMatch, setSelectedMatch] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const [stats, setStats] = useState({
     runs: 0, ballsFaced: 0, fours: 0, sixes: 0, wickets: 0,
     overs: 0, runsConceded: 0, maidens: 0, catches: 0, runOuts: 0, dotBalls: 0, notes: "",
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedMatch || !selectedPlayer) {
+        throw new Error("Choose a match and a player first.");
+      }
+      return createMatchStats({
+        matchId: selectedMatch,
+        playerId: selectedPlayer,
+        runs: stats.runs,
+        ballsFaced: stats.ballsFaced,
+        fours: stats.fours,
+        sixes: stats.sixes,
+        wickets: stats.wickets,
+        oversBowled: stats.overs,
+        runsConceded: stats.runsConceded,
+        maidens: stats.maidens,
+        catches: stats.catches,
+        runOuts: stats.runOuts,
+        dotBalls: stats.dotBalls,
+        notes: stats.notes,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      onClose();
+    },
   });
 
   if (!open) return null;
@@ -29,14 +75,14 @@ export function AddStatsModal({ open, onClose }: { open: boolean; onClose: () =>
               <label className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">Match</label>
               <select className="mt-1 w-full h-9 px-3 text-sm bg-background border border-input focus:border-cricket-red focus:outline-none" value={selectedMatch} onChange={e => setSelectedMatch(e.target.value)}>
                 <option value="">Choose...</option>
-                {recentMatches.map(m => <option key={m.id} value={m.id}>{m.opponent} — {m.date}</option>)}
+                {(matchesQuery.data ?? []).map(m => <option key={m.id} value={m.id}>{m.opponent_name} — {new Date(m.scheduled_at).toLocaleDateString()}</option>)}
               </select>
             </div>
             <div>
               <label className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">Player</label>
               <select className="mt-1 w-full h-9 px-3 text-sm bg-background border border-input focus:border-cricket-red focus:outline-none" value={selectedPlayer} onChange={e => setSelectedPlayer(e.target.value)}>
                 <option value="">Choose...</option>
-                {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {(playersQuery.data ?? []).map(p => <option key={p.id} value={p.id}>{p.full_name}</option>)}
               </select>
             </div>
           </div>
@@ -92,7 +138,9 @@ export function AddStatsModal({ open, onClose }: { open: boolean; onClose: () =>
           </div>
         </div>
         <div className="flex gap-2 px-4 py-3 border-t border-border">
-          <Button variant="cricket" className="flex-1" onClick={onClose}><Save className="w-3.5 h-3.5" /> Save Stats</Button>
+          <Button variant="cricket" className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+            <Save className="w-3.5 h-3.5" /> {createMutation.isPending ? "Saving..." : "Save Stats"}
+          </Button>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
         </div>
       </div>

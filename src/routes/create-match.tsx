@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { matchTypes, players } from "@/lib/mock-data";
-import { Users, UserPlus, ClipboardList } from "lucide-react";
-import { AddPlayerModal } from "@/components/AddPlayerModal";
-import { AddStatsModal } from "@/components/AddStatsModal";
+import { Users } from "lucide-react";
+import { createMatch, fetchPlayers, fetchProfile, fetchSession, fetchTeams } from "@/lib/supabase-api";
+import { labelFromEnum, matchTypes } from "@/lib/lookups";
+import { canManageAcademyUi } from "@/lib/role-access";
 
 export const Route = createFileRoute("/create-match")({
   component: CreateMatchPage,
@@ -12,19 +13,80 @@ export const Route = createFileRoute("/create-match")({
 });
 
 function CreateMatchPage() {
-  const [form, setForm] = useState({
-    name: "", opponent: "", date: "", time: "", overs: "20",
-    matchType: "T20", ground: "", tossResult: "", tossWinner: "",
+  const queryClient = useQueryClient();
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
+  const profileQuery = useQuery({
+    queryKey: ["profile", sessionQuery.data?.user.id],
+    queryFn: () => fetchProfile(sessionQuery.data!.user.id),
+    enabled: !!sessionQuery.data?.user.id,
   });
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
-  const [showAddPlayer, setShowAddPlayer] = useState(false);
-  const [showAddStats, setShowAddStats] = useState(false);
+  const teamsQuery = useQuery({
+    queryKey: ["teams", profileQuery.data?.academy_id],
+    queryFn: () => fetchTeams(profileQuery.data!.academy_id!),
+    enabled: !!profileQuery.data?.academy_id,
+  });
+  const playersQuery = useQuery({
+    queryKey: ["players", profileQuery.data?.academy_id],
+    queryFn: () => fetchPlayers(profileQuery.data!.academy_id!),
+    enabled: !!profileQuery.data?.academy_id,
+  });
+  const [form, setForm] = useState({
+    name: "",
+    opponent: "",
+    date: "",
+    time: "",
+    overs: "20",
+    matchType: "t20",
+    ground: "",
+    tossResult: "",
+    tossWinner: "",
+  });
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const canManageMatchSetup = canManageAcademyUi(profileQuery.data?.role);
 
-  const togglePlayer = (id: number) => {
-    setSelectedPlayers(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : prev.length < 11 ? [...prev, id] : prev
-    );
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!profileQuery.data?.academy_id) {
+        throw new Error("No academy found for this account.");
+      }
+      const scheduledAt =
+        form.date && form.time
+          ? new Date(
+              Number(form.date.slice(0, 4)),
+              Number(form.date.slice(5, 7)) - 1,
+              Number(form.date.slice(8, 10)),
+              Number(form.time.slice(0, 2)),
+              Number(form.time.slice(3, 5)),
+            ).toISOString()
+          : new Date().toISOString();
+      return createMatch(profileQuery.data.academy_id, {
+        matchName: form.name || null,
+        opponentName: form.opponent,
+        scheduledAt,
+        matchFormat: form.matchType as any,
+        overs: Number(form.overs),
+        venue: form.ground || null,
+        ground: form.ground || null,
+        tossWinnerSide: form.tossWinner === "us" ? "our_team" : form.tossWinner === "them" ? "opponent" : null,
+        tossDecision: form.tossResult === "bat" ? "bat_first" : form.tossResult === "bowl" ? "bowl_first" : null,
+        teamId: teamsQuery.data?.[0]?.id ?? null,
+        seasonId: teamsQuery.data?.[0]?.season_id ?? null,
+        selectedPlayerIds: selectedPlayers,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["matches"] });
+      setSelectedPlayers([]);
+    },
+  });
+
+  const togglePlayer = (id: string) => {
+    setSelectedPlayers((prev) => (prev.includes(id) ? prev.filter((playerId) => playerId !== id) : prev.length < 11 ? [...prev, id] : prev));
   };
+
+  if (profileQuery.data && !canManageMatchSetup) {
+    return <Navigate to="/profile" />;
+  }
 
   return (
     <div className="p-4 lg:p-6 max-w-3xl space-y-5">
@@ -32,14 +94,6 @@ function CreateMatchPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight">Create Match</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Set up a new match</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowAddPlayer(true)}>
-            <UserPlus className="w-3.5 h-3.5" /> Add Player
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowAddStats(true)}>
-            <ClipboardList className="w-3.5 h-3.5" /> Add Stats
-          </Button>
         </div>
       </div>
 
@@ -70,7 +124,7 @@ function CreateMatchPage() {
           <div>
             <label className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">Match Type</label>
             <select className="mt-1 w-full h-9 px-3 text-sm bg-background border border-input focus:border-cricket-red focus:outline-none transition-colors" value={form.matchType} onChange={e => setForm({...form, matchType: e.target.value})}>
-              {matchTypes.map(t => <option key={t} value={t}>{t}</option>)}
+              {matchTypes.map(t => <option key={t} value={t}>{labelFromEnum(t)}</option>)}
             </select>
           </div>
           <div className="md:col-span-2">
@@ -100,19 +154,20 @@ function CreateMatchPage() {
             <Users className="w-3 h-3" /> Select Playing XI ({selectedPlayers.length}/11)
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {players.map(p => (
+            {(playersQuery.data ?? []).map((player) => (
               <button
-                key={p.id}
-                onClick={() => togglePlayer(p.id)}
-                className={`stat-card text-left transition-all ${selectedPlayers.includes(p.id) ? "border-cricket-red bg-cricket-red/5" : ""}`}
+                key={player.id}
+                type="button"
+                onClick={() => togglePlayer(player.id)}
+                className={`stat-card text-left transition-all ${selectedPlayers.includes(player.id) ? "border-cricket-red bg-cricket-red/5" : ""}`}
               >
                 <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(p.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
-                    #{p.jersey}
+                  <div className={`w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(player.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
+                    #{player.jersey_number}
                   </div>
                   <div>
-                    <div className="text-xs font-semibold">{p.name}</div>
-                    <div className="text-[0.55rem] text-muted-foreground">{p.role}</div>
+                    <div className="text-xs font-semibold">{player.full_name}</div>
+                    <div className="text-[0.55rem] text-muted-foreground">{labelFromEnum(player.player_role)}</div>
                   </div>
                 </div>
               </button>
@@ -121,13 +176,12 @@ function CreateMatchPage() {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button variant="cricket" className="flex-1">Create Match</Button>
+          <Button variant="cricket" className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+            {createMutation.isPending ? "Creating..." : "Create Match"}
+          </Button>
           <Button variant="outline">Cancel</Button>
         </div>
       </div>
-
-      <AddPlayerModal open={showAddPlayer} onClose={() => setShowAddPlayer(false)} />
-      <AddStatsModal open={showAddStats} onClose={() => setShowAddStats(false)} />
     </div>
   );
 }

@@ -1,0 +1,5 @@
+project_id = "yktgmzjdtggyefmrhvrg"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8080"

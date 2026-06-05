@@ -10,18 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TeamRouteImport } from './routes/team'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as RequestsRouteImport } from './routes/requests'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlayersRouteImport } from './routes/players'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MatchesRouteImport } from './routes/matches'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as CreateMatchRouteImport } from './routes/create-match'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AcademyRouteImport } from './routes/academy'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MatchesMatchIdRouteImport } from './routes/matches.$matchId'
 
 const TeamRoute = TeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestsRoute = RequestsRouteImport.update({
+  id: '/requests',
+  path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -39,9 +54,19 @@ const PlayersRoute = PlayersRouteImport.update({
   path: '/players',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MatchesRoute = MatchesRouteImport.update({
   id: '/matches',
   path: '/matches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateMatchRoute = CreateMatchRouteImport.update({
@@ -64,28 +89,43 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MatchesMatchIdRoute = MatchesMatchIdRouteImport.update({
+  id: '/$matchId',
+  path: '/$matchId',
+  getParentRoute: () => MatchesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
-  '/matches': typeof MatchesRoute
+  '/login': typeof LoginRoute
+  '/matches': typeof MatchesRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/requests': typeof RequestsRoute
+  '/signup': typeof SignupRoute
   '/team': typeof TeamRoute
+  '/matches/$matchId': typeof MatchesMatchIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
-  '/matches': typeof MatchesRoute
+  '/login': typeof LoginRoute
+  '/matches': typeof MatchesRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/requests': typeof RequestsRoute
+  '/signup': typeof SignupRoute
   '/team': typeof TeamRoute
+  '/matches/$matchId': typeof MatchesMatchIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,11 +133,16 @@ export interface FileRoutesById {
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
-  '/matches': typeof MatchesRoute
+  '/login': typeof LoginRoute
+  '/matches': typeof MatchesRouteWithChildren
+  '/onboarding': typeof OnboardingRoute
   '/players': typeof PlayersRoute
   '/profile': typeof ProfileRoute
   '/reports': typeof ReportsRoute
+  '/requests': typeof RequestsRoute
+  '/signup': typeof SignupRoute
   '/team': typeof TeamRoute
+  '/matches/$matchId': typeof MatchesMatchIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -106,33 +151,48 @@ export interface FileRouteTypes {
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/login'
     | '/matches'
+    | '/onboarding'
     | '/players'
     | '/profile'
     | '/reports'
+    | '/requests'
+    | '/signup'
     | '/team'
+    | '/matches/$matchId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/login'
     | '/matches'
+    | '/onboarding'
     | '/players'
     | '/profile'
     | '/reports'
+    | '/requests'
+    | '/signup'
     | '/team'
+    | '/matches/$matchId'
   id:
     | '__root__'
     | '/'
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/login'
     | '/matches'
+    | '/onboarding'
     | '/players'
     | '/profile'
     | '/reports'
+    | '/requests'
+    | '/signup'
     | '/team'
+    | '/matches/$matchId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -140,10 +200,14 @@ export interface RootRouteChildren {
   AcademyRoute: typeof AcademyRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CreateMatchRoute: typeof CreateMatchRoute
-  MatchesRoute: typeof MatchesRoute
+  LoginRoute: typeof LoginRoute
+  MatchesRoute: typeof MatchesRouteWithChildren
+  OnboardingRoute: typeof OnboardingRoute
   PlayersRoute: typeof PlayersRoute
   ProfileRoute: typeof ProfileRoute
   ReportsRoute: typeof ReportsRoute
+  RequestsRoute: typeof RequestsRoute
+  SignupRoute: typeof SignupRoute
   TeamRoute: typeof TeamRoute
 }
 
@@ -154,6 +218,20 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/team'
       preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/requests': {
+      id: '/requests'
+      path: '/requests'
+      fullPath: '/requests'
+      preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -177,11 +255,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/matches': {
       id: '/matches'
       path: '/matches'
       fullPath: '/matches'
       preLoaderRoute: typeof MatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create-match': {
@@ -212,18 +304,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/matches/$matchId': {
+      id: '/matches/$matchId'
+      path: '/$matchId'
+      fullPath: '/matches/$matchId'
+      preLoaderRoute: typeof MatchesMatchIdRouteImport
+      parentRoute: typeof MatchesRoute
+    }
   }
 }
+
+interface MatchesRouteChildren {
+  MatchesMatchIdRoute: typeof MatchesMatchIdRoute
+}
+
+const MatchesRouteChildren: MatchesRouteChildren = {
+  MatchesMatchIdRoute: MatchesMatchIdRoute,
+}
+
+const MatchesRouteWithChildren =
+  MatchesRoute._addFileChildren(MatchesRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcademyRoute: AcademyRoute,
   AnalyticsRoute: AnalyticsRoute,
   CreateMatchRoute: CreateMatchRoute,
-  MatchesRoute: MatchesRoute,
+  LoginRoute: LoginRoute,
+  MatchesRoute: MatchesRouteWithChildren,
+  OnboardingRoute: OnboardingRoute,
   PlayersRoute: PlayersRoute,
   ProfileRoute: ProfileRoute,
   ReportsRoute: ReportsRoute,
+  RequestsRoute: RequestsRoute,
+  SignupRoute: SignupRoute,
   TeamRoute: TeamRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,0 +1,372 @@
+CricketIQ Backend Schema
+==========================
+
+Notes
+-----
+- The React app currently uses mock data only; there are no real login or signup pages wired yet.
+- This schema is designed to support the current UI pages, all modal forms, and future auth plus role-based access.
+- Auth owns `auth.users`. The app layer should read roles from `public.profiles.role` and academy access from `public.academy_memberships`.
+
+Auth and access model
+---------------------
+- `auth.users` stores the authenticated account.
+- `public.profiles` stores the app profile for each auth user.
+- `public.academies` stores the tenant/organization.
+- `public.academy_memberships` connects users to academies and defines their role in that academy.
+- Roles are modeled with the `user_role` enum:
+  - `super_admin`
+  - `academy_owner`
+  - `coach`
+  - `analyst`
+  - `player`
+- `academy_owner` and `coach` are treated as write-capable academy managers in the RLS helpers.
+- `analyst` is treated as read-only academy access unless you extend the policies later.
+
+Core tables
+-----------
+
+`public.profiles`
+- Purpose: one app profile per authenticated user.
+- Fields:
+  - `id` uuid primary key
+  - `user_id` uuid unique, references `auth.users.id`
+  - `academy_id` uuid, references `public.academies.id`
+  - `full_name` text
+  - `display_name` text
+  - `email` text
+  - `avatar_url` text
+  - `phone` text
+  - `role` `user_role`
+  - `bio` text
+  - `is_active` boolean
+  - `last_sign_in_at` timestamptz
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.academies`
+- Purpose: academy/club tenant record.
+- Fields:
+  - `id` uuid primary key
+  - `name` text
+  - `slug` text unique
+  - `founded_year` integer
+  - `district_rank` integer
+  - `state_rank` integer
+  - `currency_code` char(3)
+  - `revenue_monthly_amount` numeric(12,2)
+  - `revenue_annual_amount` numeric(12,2)
+  - `logo_url` text
+  - `description` text
+  - `website_url` text
+  - `address` text
+  - `timezone` text
+  - `created_by` uuid, references `auth.users.id`
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.academy_memberships`
+- Purpose: user-to-academy access control.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `user_id` uuid, references `auth.users.id`
+  - `role` `user_role`
+  - `joined_at` timestamptz
+  - `is_primary` boolean
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Constraint:
+  - unique `(academy_id, user_id)`
+
+`public.seasons`
+- Purpose: season grouping for players, teams, matches, and reports.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `name` text
+  - `starts_on` date
+  - `ends_on` date
+  - `is_current` boolean
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+Squads and player data
+----------------------
+
+`public.teams`
+- Purpose: team squads within an academy.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `name` text
+  - `age_group` text
+  - `level` text
+  - `coach_profile_id` uuid, references `public.profiles.user_id`
+  - `record_wins` integer
+  - `record_losses` integer
+  - `record_draws` integer
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.players`
+- Purpose: master player record used by players page, profile page, team page, match creation, and analytics.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `current_team_id` uuid, references `public.teams.id`
+  - `profile_id` uuid unique, references `public.profiles.user_id`
+  - `full_name` text
+  - `short_name` text
+  - `age` integer
+  - `player_role` text enum
+  - `batting_style` text enum
+  - `bowling_style` text enum
+  - `jersey_number` integer
+  - `position` text
+  - `strength_summary` text
+  - `weakness_summary` text
+  - `fitness_rating` smallint
+  - `consistency_rating` smallint
+  - `aggression_rating` smallint
+  - `photo_url` text
+  - `notes` text
+  - `is_active` boolean
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Important checks:
+  - ratings should stay between 0 and 100
+  - `jersey_number` should be positive
+  - unique `(academy_id, jersey_number)`
+
+`public.team_roster`
+- Purpose: saved batting order, captaincy, vice-captain, and availability for the Team page.
+- Fields:
+  - `id` uuid primary key
+  - `team_id` uuid, references `public.teams.id`
+  - `player_id` uuid, references `public.players.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `batting_position` smallint
+  - `is_available` boolean
+  - `is_captain` boolean
+  - `is_vice_captain` boolean
+  - `notes` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Constraint:
+  - unique `(team_id, player_id, season_id)`
+
+`public.player_season_stats`
+- Purpose: aggregated season-level metrics for profile cards, reports, and leaderboards.
+- Fields:
+  - `id` uuid primary key
+  - `player_id` uuid, references `public.players.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `matches` integer
+  - `runs` integer
+  - `batting_average` numeric(6,2)
+  - `strike_rate` numeric(6,2)
+  - `wickets` integer
+  - `fifties` integer
+  - `hundreds` integer
+  - `catches` integer
+  - `maidens` integer
+  - `economy_rate` numeric(6,2)
+  - `highest_score` integer
+  - `best_bowling` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Constraint:
+  - unique `(player_id, season_id)`
+
+`public.scouting_candidates`
+- Purpose: future scouting/recruitment records for players like the `scoutPlayers` mock dataset.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `full_name` text
+  - `age` integer
+  - `player_role` text enum
+  - `batting_style` text enum
+  - `bowling_style` text enum
+  - `strike_rate` numeric(6,2)
+  - `consistency_rating` smallint
+  - `aggression_rating` smallint
+  - `fitness_rating` smallint
+  - `district` text
+  - `source_academy_name` text
+  - `status` text
+  - `notes` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+Matches and scorekeeping
+------------------------
+
+`public.matches`
+- Purpose: match scheduling, match history, and result summary.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `team_id` uuid, references `public.teams.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `match_name` text
+  - `opponent_name` text
+  - `scheduled_at` timestamptz
+  - `match_format` text enum
+  - `overs` smallint
+  - `venue` text
+  - `ground` text
+  - `status` text enum
+  - `toss_winner_side` text enum
+  - `toss_decision` text enum
+  - `team_runs` integer
+  - `team_wickets` integer
+  - `opponent_runs` integer
+  - `opponent_wickets` integer
+  - `result_summary` text
+  - `result_margin_runs` integer
+  - `result_margin_wickets` integer
+  - `notes` text
+  - `created_by` uuid, references `auth.users.id`
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.match_squads`
+- Purpose: selected XI, lineup order, captain, vice-captain, and match availability.
+- Fields:
+  - `id` uuid primary key
+  - `match_id` uuid, references `public.matches.id`
+  - `player_id` uuid, references `public.players.id`
+  - `batting_position` smallint
+  - `is_selected` boolean
+  - `is_captain` boolean
+  - `is_vice_captain` boolean
+  - `is_available` boolean
+  - `role_in_match` text
+  - `selection_reason` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Constraint:
+  - unique `(match_id, player_id)`
+
+`public.player_match_stats`
+- Purpose: scorecard entry form from the Add Stats modal.
+- Fields:
+  - `id` uuid primary key
+  - `match_id` uuid, references `public.matches.id`
+  - `player_id` uuid, references `public.players.id`
+  - `runs` integer
+  - `balls_faced` integer
+  - `fours` integer
+  - `sixes` integer
+  - `wickets` integer
+  - `overs_bowled` numeric(4,1)
+  - `runs_conceded` integer
+  - `maidens` integer
+  - `catches` integer
+  - `run_outs` integer
+  - `dot_balls` integer
+  - `notes` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+- Constraint:
+  - unique `(match_id, player_id)`
+
+Operations and content
+----------------------
+
+`public.training_sessions`
+- Purpose: recurring training schedule in the Academy page.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `team_id` uuid, references `public.teams.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `day_of_week` text
+  - `start_time` time
+  - `session_name` text
+  - `session_type` text enum
+  - `venue` text
+  - `notes` text
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.reports`
+- Purpose: downloadable PDFs/CSVs shown on the Reports page.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `season_id` uuid, references `public.seasons.id`
+  - `report_name` text
+  - `report_type` text enum
+  - `file_url` text
+  - `generated_by` uuid, references `auth.users.id`
+  - `generated_at` timestamptz
+  - `metadata` jsonb
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.notifications`
+- Purpose: in-app alerts and toast-style messages.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `recipient_user_id` uuid, references `auth.users.id`
+  - `notification_type` text enum
+  - `title` text
+  - `message` text
+  - `action_url` text
+  - `read_at` timestamptz
+  - `metadata` jsonb
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.ai_recommendations`
+- Purpose: AI tactical recommendations shown on the dashboard and analytics page.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `team_id` uuid, references `public.teams.id`
+  - `match_id` uuid, references `public.matches.id`
+  - `recommendation_type` text enum
+  - `priority` text enum
+  - `title` text
+  - `description` text
+  - `context` jsonb
+  - `resolved_at` timestamptz
+  - `created_by` uuid, references `auth.users.id`
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+`public.coach_feedback`
+- Purpose: notes and feedback shown in the player profile page.
+- Fields:
+  - `id` uuid primary key
+  - `academy_id` uuid, references `public.academies.id`
+  - `player_id` uuid, references `public.players.id`
+  - `coach_profile_id` uuid, references `public.profiles.user_id`
+  - `feedback_date` date
+  - `subject` text
+  - `message` text
+  - `tags` text[]
+  - `created_at` timestamptz
+  - `updated_at` timestamptz
+
+RLS summary
+-----------
+- Users can read their own `profiles` row.
+- Academy members can read academy-owned rows in their academy.
+- Coaches, academy owners, analysts, and super admins can manage academy data.
+- Players can read their own profile, own match stats, and academy-scoped data where allowed.
+
+UI mapping
+----------
+- Dashboard: `matches`, `player_season_stats`, `ai_recommendations`, `notifications`, `player_season_stats`
+- Players page and Add Player modal: `players`
+- Matches page and Create Match modal: `matches`, `match_squads`
+- Add Stats modal: `player_match_stats`
+- Team page: `team_roster`
+- Profile page: `players`, `player_season_stats`, `coach_feedback`
+- Academy page: `academies`, `teams`, `training_sessions`
+- Reports page: `reports`

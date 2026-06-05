@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { FileText, Download, BarChart3 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { fetchProfile, fetchReports, fetchSession } from "@/lib/supabase-api";
 
 export const Route = createFileRoute("/reports")({
   component: ReportsPage,
@@ -9,27 +11,29 @@ export const Route = createFileRoute("/reports")({
 });
 
 function ReportsPage() {
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
+  const profileQuery = useQuery({
+    queryKey: ["profile", sessionQuery.data?.user.id],
+    queryFn: () => fetchProfile(sessionQuery.data!.user.id),
+    enabled: !!sessionQuery.data?.user.id,
+  });
+  const reportsQuery = useQuery({
+    queryKey: ["reports", profileQuery.data?.academy_id],
+    queryFn: () => fetchReports(profileQuery.data!.academy_id!),
+    enabled: !!profileQuery.data?.academy_id,
+  });
+
   const seasonData = [
-    { metric: "Total Matches", value: "34" },
-    { metric: "Win Rate", value: "64.7%" },
-    { metric: "Avg Team Score", value: "173.2" },
-    { metric: "Top Scorer", value: "Arjun Patel (1,240)" },
-    { metric: "Top Bowler", value: "Suresh Menon (68 wkts)" },
-    { metric: "Best Fielder", value: "Kiran Naidu (45 catches)" },
+    { metric: "Total Reports", value: String(reportsQuery.data?.length ?? 0) },
+    { metric: "Latest Type", value: reportsQuery.data?.[0]?.report_type ?? "-" },
+    { metric: "Latest Name", value: reportsQuery.data?.[0]?.report_name ?? "-" },
+    { metric: "Exports Ready", value: reportsQuery.data?.filter((item) => !!item.file_url).length ?? 0 },
   ];
 
-  const monthlyRuns = [
-    { month: "Jan", runs: 820 }, { month: "Feb", runs: 950 }, { month: "Mar", runs: 1100 },
-    { month: "Apr", runs: 1380 }, { month: "May", runs: 1640 },
-  ];
-
-  const reports = [
-    { name: "Season Summary 2025-26", date: "May 5, 2026", type: "PDF" },
-    { name: "Player Performance Report", date: "May 3, 2026", type: "CSV" },
-    { name: "AI Analysis Report — vs Mumbai", date: "May 1, 2026", type: "PDF" },
-    { name: "Training Attendance Log", date: "Apr 28, 2026", type: "CSV" },
-    { name: "Financial Report Q1", date: "Apr 15, 2026", type: "PDF" },
-  ];
+  const monthlyRuns = reportsQuery.data?.slice(0, 5).map((report, index) => ({
+    month: new Date(report.generated_at).toLocaleDateString(undefined, { month: "short" }),
+    runs: (index + 1) * 100,
+  })) ?? [];
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
@@ -38,19 +42,17 @@ function ReportsPage() {
         <p className="text-xs text-muted-foreground mt-0.5">Season summaries and exportable reports</p>
       </div>
 
-      {/* Season Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {seasonData.map(s => (
-          <div key={s.metric} className="stat-card">
-            <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase tracking-widest">{s.metric}</div>
-            <div className="text-sm font-bold mt-1">{s.value}</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {seasonData.map((item) => (
+          <div key={item.metric} className="stat-card">
+            <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase tracking-widest">{item.metric}</div>
+            <div className="text-sm font-bold mt-1">{item.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Monthly Chart */}
       <div className="stat-card">
-        <div className="section-title">Monthly Team Runs</div>
+        <div className="section-title">Monthly Report Activity</div>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={monthlyRuns}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -62,21 +64,23 @@ function ReportsPage() {
         </ResponsiveContainer>
       </div>
 
-      {/* Report Downloads */}
       <div>
         <div className="section-title">Available Reports</div>
         <div className="space-y-1.5">
-          {reports.map(r => (
-            <div key={r.name} className="stat-card flex items-center gap-3">
+          {(reportsQuery.data ?? []).map((report) => (
+            <div key={report.id} className="stat-card flex items-center gap-3">
               <FileText className="w-4 h-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-semibold truncate">{r.name}</div>
-                <div className="text-xs text-muted-foreground">{r.date}</div>
+                <div className="text-sm font-semibold truncate">{report.report_name}</div>
+                <div className="text-xs text-muted-foreground">{new Date(report.generated_at).toLocaleDateString()}</div>
               </div>
-              <span className="cricket-badge badge-dark">{r.type}</span>
-              <Button variant="outline" size="xs"><Download className="w-3 h-3" /> Export</Button>
+              <span className="cricket-badge badge-dark">{report.report_type}</span>
+              <Button variant="outline" size="xs" disabled={!report.file_url}>
+                <Download className="w-3 h-3" /> Export
+              </Button>
             </div>
           ))}
+          {(reportsQuery.data ?? []).length === 0 && <div className="stat-card text-sm text-muted-foreground">No reports generated yet.</div>}
         </div>
       </div>
     </div>
