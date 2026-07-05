@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { Navigate, createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { signIn, signUp } from "@/lib/supabase-api";
+import { AuthShell } from "@/components/AuthShell";
+import { fetchSession, signIn, signUp } from "@/lib/supabase-api";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/signup")({
 function SignupPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -59,26 +61,49 @@ function SignupPage() {
     }
   };
 
+  if (sessionQuery.data) {
+    return <Navigate to="/dashboard" />;
+  }
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md border border-border bg-card p-6 shadow-lg">
-        <div className="mb-6">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">CricketIQ</div>
-          <h1 className="mt-2 text-2xl font-bold">Create account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Create your account first.</p>
-        </div>
+    <AuthShell
+      eyebrow="Start your setup"
+      title="Create your account and launch your cricket workspace."
+      description="Set up your academy, organize your squad, and start tracking player growth, match performance, and coaching actions in one place."
+      panelLabel="What you get"
+      panelTitle="One platform for player intel, match operations, and academy growth."
+      panelDescription="From onboarding to performance reviews, CricketIQ helps your staff stay aligned while giving players a clearer development journey."
+      form={(
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Full name</label>
-            <input className="mt-1 w-full h-10 px-3 border border-input bg-background" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required />
+            <input
+              className="mt-1 w-full h-11 px-3 border border-input bg-background"
+              value={form.fullName}
+              onChange={(event) => setForm({ ...form, fullName: event.target.value })}
+              required
+            />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
-            <input className="mt-1 w-full h-10 px-3 border border-input bg-background" type="text" inputMode="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required />
+            <input
+              className="mt-1 w-full h-11 px-3 border border-input bg-background"
+              type="text"
+              inputMode="email"
+              value={form.email}
+              onChange={(event) => setForm({ ...form, email: event.target.value })}
+              required
+            />
           </div>
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Password</label>
-            <input className="mt-1 w-full h-10 px-3 border border-input bg-background" type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required />
+            <input
+              className="mt-1 w-full h-11 px-3 border border-input bg-background"
+              type="password"
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+              required
+            />
           </div>
           {error && <div className="text-sm text-cricket-red">{error}</div>}
           {info && <div className="text-sm text-cricket-green">{info}</div>}
@@ -86,10 +111,12 @@ function SignupPage() {
             {loading ? "Creating account..." : "Create account"}
           </Button>
         </form>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Already have an account? <Link to="/login" className="text-cricket-red font-semibold">Sign in</Link>
+      )}
+      footer={(
+        <p>
+          Already have an account? <Link to="/login" className="font-semibold text-cricket-red">Sign in</Link>
         </p>
-      </div>
-    </div>
+      )}
+    />
   );
 }

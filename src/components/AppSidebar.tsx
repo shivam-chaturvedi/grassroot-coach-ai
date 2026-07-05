@@ -16,7 +16,7 @@ import { formatEnumLabel } from "@/lib/supabase-api";
 import { canAccessStaffArea, canManageAcademyUi } from "@/lib/role-access";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, staffOnly: false },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, staffOnly: false },
   { title: "Matches", url: "/matches", icon: Swords, staffOnly: false },
   { title: "Players", url: "/players", icon: Users, staffOnly: false },
   { title: "Profile", url: "/profile", icon: UserCircle, staffOnly: false },

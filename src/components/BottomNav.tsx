@@ -4,7 +4,7 @@ import type { ProfileRow } from "@/lib/supabase-api";
 import { canAccessStaffArea } from "@/lib/role-access";
 
 const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, staffOnly: false },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, staffOnly: false },
   { title: "Matches", url: "/matches", icon: Swords, staffOnly: false },
   { title: "Team", url: "/team", icon: Users, staffOnly: true },
   { title: "Analytics", url: "/analytics", icon: BarChart3, staffOnly: true },

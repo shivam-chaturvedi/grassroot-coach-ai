@@ -75,7 +75,7 @@ function OnboardingPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["profile", sessionQuery.data?.user.id] });
       await queryClient.invalidateQueries({ queryKey: ["academy"] });
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: "/dashboard", replace: true });
     },
     onError: (mutationError) => {
       setError(mutationError instanceof Error ? mutationError.message : "Unable to complete setup");
@@ -150,7 +150,7 @@ function OnboardingPage() {
   }
 
   if (profileQuery.data?.academy_id) {
-    return <Navigate to="/" />;
+    return <Navigate to="/dashboard" />;
   }
 
   return (

@@ -18,6 +18,7 @@ import { Route as PlayersRouteImport } from './routes/players'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CreateMatchRouteImport } from './routes/create-match'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AcademyRouteImport } from './routes/academy'
@@ -69,6 +70,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateMatchRoute = CreateMatchRouteImport.update({
   id: '/create-match',
   path: '/create-match',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
+  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/matches': typeof MatchesRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
+  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/matches': typeof MatchesRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/academy': typeof AcademyRoute
   '/analytics': typeof AnalyticsRoute
   '/create-match': typeof CreateMatchRoute
+  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/matches': typeof MatchesRouteWithChildren
   '/onboarding': typeof OnboardingRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/dashboard'
     | '/login'
     | '/matches'
     | '/onboarding'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/dashboard'
     | '/login'
     | '/matches'
     | '/onboarding'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/analytics'
     | '/create-match'
+    | '/dashboard'
     | '/login'
     | '/matches'
     | '/onboarding'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AcademyRoute: typeof AcademyRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CreateMatchRoute: typeof CreateMatchRoute
+  DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   MatchesRoute: typeof MatchesRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
@@ -276,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/create-match': {
       id: '/create-match'
       path: '/create-match'
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcademyRoute: AcademyRoute,
   AnalyticsRoute: AnalyticsRoute,
   CreateMatchRoute: CreateMatchRoute,
+  DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   MatchesRoute: MatchesRouteWithChildren,
   OnboardingRoute: OnboardingRoute,

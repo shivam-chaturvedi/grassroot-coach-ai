@@ -1,8 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { Navigate, createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { signIn } from "@/lib/supabase-api";
+import { AuthShell } from "@/components/AuthShell";
+import { fetchSession, signIn } from "@/lib/supabase-api";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ function LoginPage() {
         await queryClient.invalidateQueries({ queryKey: ["academy"] });
         await queryClient.invalidateQueries({ queryKey: ["notifications"] });
       }
-      await navigate({ to: "/", replace: true });
+      await navigate({ to: "/dashboard", replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in");
     } finally {
@@ -37,19 +39,24 @@ function LoginPage() {
     }
   };
 
+  if (sessionQuery.data) {
+    return <Navigate to="/dashboard" />;
+  }
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md border border-border bg-card p-6 shadow-lg">
-        <div className="mb-6">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">CricketIQ</div>
-          <h1 className="mt-2 text-2xl font-bold">Sign in</h1>
-          <p className="text-sm text-muted-foreground mt-1">Use your account to access the dashboard.</p>
-        </div>
+    <AuthShell
+      eyebrow="Welcome back"
+      title="Sign in to your cricket operations hub."
+      description="Manage players, matches, training feedback, and AI-powered insights from one platform built for modern cricket academies."
+      panelLabel="Explore the app"
+      panelTitle="The operating system for cricket academies that want sharper decisions."
+      panelDescription="CricketIQ brings player development, match workflow, selection context, and analytics into one calm, high-visibility workspace."
+      form={(
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Email</label>
             <input
-              className="mt-1 w-full h-10 px-3 border border-input bg-background"
+              className="mt-1 w-full h-11 px-3 border border-input bg-background"
               type="text"
               inputMode="email"
               value={email}
@@ -60,7 +67,7 @@ function LoginPage() {
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Password</label>
             <input
-              className="mt-1 w-full h-10 px-3 border border-input bg-background"
+              className="mt-1 w-full h-11 px-3 border border-input bg-background"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -72,10 +79,12 @@ function LoginPage() {
             {loading ? "Signing in..." : "Sign in"}
           </Button>
         </form>
-        <p className="mt-4 text-sm text-muted-foreground">
-          New here? <Link to="/signup" className="text-cricket-red font-semibold">Create an account</Link>
+      )}
+      footer={(
+        <p>
+          New here? <Link to="/signup" className="font-semibold text-cricket-red">Create an account</Link>
         </p>
-      </div>
-    </div>
+      )}
+    />
   );
 }

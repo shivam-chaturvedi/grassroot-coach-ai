@@ -26,6 +26,7 @@ export function AppLayout({ children }: { children?: React.ReactNode }) {
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/onboarding");
+  const isPublicLandingRoute = pathname === "/";
 
   const sessionQuery = useQuery({
     queryKey: ["session"],
@@ -85,6 +86,26 @@ export function AppLayout({ children }: { children?: React.ReactNode }) {
   }, [queryClient]);
 
   if (isAuthRoute) {
+    return <Outlet />;
+  }
+
+  if (isPublicLandingRoute) {
+    if (sessionQuery.isLoading || profileQuery.isLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="text-sm text-muted-foreground">Loading CricketIQ…</div>
+        </div>
+      );
+    }
+
+    if (sessionQuery.data && profileQuery.data && !profileQuery.data.academy_id) {
+      return <Navigate to="/onboarding" />;
+    }
+
+    if (sessionQuery.data) {
+      return <Navigate to="/dashboard" />;
+    }
+
     return <Outlet />;
   }
 

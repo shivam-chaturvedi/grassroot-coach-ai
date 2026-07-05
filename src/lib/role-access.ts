@@ -19,5 +19,5 @@ export function isRestrictedPlayerRoute(pathname: string) {
 }
 
 export function getRoleHomePath(role?: UserRole | null) {
-  return isPlayerRole(role) ? "/profile" : "/";
+  return isPlayerRole(role) ? "/profile" : "/dashboard";
 }

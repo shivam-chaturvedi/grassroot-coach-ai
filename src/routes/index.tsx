@@ -2,6 +2,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowRight,
+  Bot,
+  CalendarDays,
+  CheckCircle2,
   TrendingUp,
   TrendingDown,
   Zap,
@@ -14,6 +18,7 @@ import {
   MessageSquare,
   Star,
   UserCircle,
+  Users,
 } from "lucide-react";
 import {
   BarChart,
@@ -40,16 +45,20 @@ import {
 } from "@/lib/supabase-api";
 
 export const Route = createFileRoute("/")({
-  component: Dashboard,
+  component: LandingRoute,
   head: () => ({
     meta: [
-      { title: "Dashboard — CricketIQ" },
-      { name: "description", content: "AI-powered cricket analytics dashboard" },
+      { title: "CricketIQ — AI Operating System For Cricket Academies" },
+      { name: "description", content: "Manage players, matches, feedback, reports, and academy operations from one cricket intelligence platform." },
     ],
   }),
 });
 
-function Dashboard() {
+function LandingRoute() {
+  return <LandingPage />;
+}
+
+export function DashboardPage() {
   const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
   const profileQuery = useQuery({
     queryKey: ["profile", sessionQuery.data?.user.id],
@@ -539,6 +548,261 @@ function Dashboard() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+const featureCards = [
+  {
+    icon: Users,
+    eyebrow: "Player Intelligence",
+    title: "Build a live player operating system",
+    description:
+      "Track player roles, strengths, weaknesses, fitness, consistency, and development notes in one shared academy workspace.",
+  },
+  {
+    icon: CalendarDays,
+    eyebrow: "Match Control",
+    title: "Run fixtures, squads, and performance reviews",
+    description:
+      "Schedule matches, assign squads, log batting and bowling outputs, and keep every performance tied back to the right player.",
+  },
+  {
+    icon: Bot,
+    eyebrow: "AI Recommendations",
+    title: "Turn raw stats into coaching actions",
+    description:
+      "Surface tactical suggestions, lineup ideas, workload signals, and coaching prompts without digging through spreadsheets.",
+  },
+  {
+    icon: Shield,
+    eyebrow: "Role-Based Access",
+    title: "Give each staff member the right view",
+    description:
+      "Owners, coaches, analysts, and players can all use the same system without seeing the wrong controls or workflows.",
+  },
+];
+
+const benefits = [
+  "Academy dashboard with matches, season output, notifications, and trend tracking",
+  "Player-specific review flow with self-feedback, coach feedback, confidence, focus, and improvement goals",
+  "Team and squad management for match selection, roles, and availability",
+  "Reporting and analytics views for coaches, analysts, and academy leadership",
+];
+
+function LandingPage() {
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top_left,_rgba(149,197,74,0.18),_transparent_28%),linear-gradient(180deg,_#f8fbf6_0%,_#ffffff_45%,_#f3f5f8_100%)] text-foreground">
+      <section className="relative border-b border-border/70">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cricket-green to-transparent" />
+        <div className="mx-auto flex max-w-7xl flex-col gap-16 px-5 py-6 sm:px-8 lg:px-10">
+          <header className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-mono text-[0.72rem] uppercase tracking-[0.32em] text-cricket-green">CricketIQ</div>
+              <p className="mt-1 text-sm text-muted-foreground">Cricket intelligence for academies, coaches, and players</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/login"
+                className="hidden text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 bg-cricket-dark px-4 py-2 text-sm font-semibold uppercase tracking-[0.16em] text-primary-foreground transition hover:bg-cricket-dark/90"
+              >
+                Try now
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </header>
+
+          <div className="grid items-center gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 border border-cricket-green/25 bg-white/70 px-3 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cricket-green shadow-sm backdrop-blur">
+                <Zap className="h-3.5 w-3.5" />
+                One place for operations, analytics, and coaching
+              </div>
+              <h1 className="mt-6 max-w-4xl font-display text-5xl leading-none sm:text-6xl lg:text-7xl">
+                CricketIQ unifies coaching, player growth, and match analysis.
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                CricketIQ helps academies manage player development, team operations, match reviews, and AI-backed decision making from a single product that feels built for real coaching work.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 bg-cricket-red px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-primary-foreground transition hover:bg-cricket-red/90"
+                >
+                  Try now
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center border border-border bg-white/80 px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-foreground transition hover:bg-white"
+                >
+                  Sign in
+                </Link>
+              </div>
+              <div className="mt-8 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+                {benefits.map((benefit) => (
+                  <div key={benefit} className="flex items-start gap-3 border border-border/70 bg-white/65 p-4 shadow-sm backdrop-blur">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cricket-green" />
+                    <span>{benefit}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-8 top-10 hidden h-28 w-28 rounded-full bg-cricket-red/10 blur-3xl lg:block" />
+              <div className="absolute -right-10 bottom-8 hidden h-32 w-32 rounded-full bg-cricket-green/15 blur-3xl lg:block" />
+              <div className="relative border border-cricket-dark/10 bg-[#0d1720] p-5 text-white shadow-2xl shadow-cricket-dark/15">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div>
+                    <p className="font-mono text-[0.68rem] uppercase tracking-[0.28em] text-white/60">Live Command Center</p>
+                    <h2 className="mt-2 text-2xl font-bold">Academy overview</h2>
+                  </div>
+                  <div className="cricket-badge badge-green bg-cricket-green/15 text-cricket-green-light">AI Active</div>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "Active Players", value: "48", delta: "+6 this month" },
+                    { label: "Upcoming Matches", value: "07", delta: "3 this week" },
+                    { label: "Coach Reviews", value: "19", delta: "Pending today" },
+                    { label: "Win Trend", value: "74%", delta: "Last 12 fixtures" },
+                  ].map((item) => (
+                    <div key={item.label} className="border border-white/10 bg-white/5 p-4">
+                      <p className="text-[0.68rem] uppercase tracking-[0.18em] text-white/55">{item.label}</p>
+                      <p className="mt-3 text-3xl font-bold">{item.value}</p>
+                      <p className="mt-1 text-sm text-white/65">{item.delta}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-5 border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[0.68rem] uppercase tracking-[0.18em] text-white/55">Today’s AI Recommendation</p>
+                      <p className="mt-2 text-lg font-semibold">Promote two all-rounders to the next T20 squad</p>
+                    </div>
+                    <Target className="h-5 w-5 text-cricket-green-light" />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-white/70">
+                    Recent form, training output, and match impact suggest better middle-over stability if the lineup shifts earlier.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10">
+        <div className="max-w-2xl">
+          <p className="font-mono text-[0.72rem] uppercase tracking-[0.32em] text-cricket-red">Everything in the app</p>
+          <h2 className="mt-3 text-3xl sm:text-4xl">A complete platform for modern cricket operations</h2>
+          <p className="mt-4 text-base leading-7 text-muted-foreground">
+            CricketIQ brings together academy setup, player tracking, match reviews, analytics, reporting, and coaching decisions in one connected workspace.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          {featureCards.map((feature) => {
+            const Icon = feature.icon;
+            return (
+              <div key={feature.title} className="group border border-border bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:border-cricket-green/40 hover:shadow-xl">
+                <div className="flex h-12 w-12 items-center justify-center bg-cricket-green/10 text-cricket-green">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="mt-5 font-mono text-[0.7rem] uppercase tracking-[0.24em] text-muted-foreground">{feature.eyebrow}</p>
+                <h3 className="mt-2 text-2xl">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">{feature.description}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-[#f5f7f2]">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-10">
+          <div>
+            <p className="font-mono text-[0.72rem] uppercase tracking-[0.32em] text-cricket-green">How teams use it</p>
+            <h2 className="mt-3 text-3xl sm:text-4xl">Built around real academy workflows</h2>
+            <p className="mt-4 text-base leading-7 text-muted-foreground">
+              The app already includes dedicated areas for academy setup, player records, match tracking, analytics, reports, requests, and player review loops.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            {[
+              {
+                title: "Onboarding and academy setup",
+                text: "Create the academy profile, define structure, and get each user into the correct role quickly.",
+              },
+              {
+                title: "Player and team management",
+                text: "Maintain rosters, assign squads, store performance context, and keep development history visible to staff.",
+              },
+              {
+                title: "Match analysis and feedback",
+                text: "Capture runs, wickets, fielding impact, self-review, coach notes, and action points after every game.",
+              },
+              {
+                title: "Analytics and reporting",
+                text: "Review trends, export reports, compare progress, and use AI recommendations to support better decisions.",
+              },
+            ].map((item, index) => (
+              <div key={item.title} className="flex gap-4 border border-border bg-white p-5 shadow-sm">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center bg-cricket-dark text-sm font-bold text-white">
+                  0{index + 1}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">{item.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-16 sm:px-8 lg:px-10">
+        <div className="grid gap-4 md:grid-cols-3">
+          {[
+            { icon: Trophy, stat: "360+", label: "match reviews captured" },
+            { icon: MessageSquare, stat: "92%", label: "feedback completion rate" },
+            { icon: Activity, stat: "24/7", label: "academy visibility across teams" },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="border border-border bg-white p-6 shadow-sm">
+                <Icon className="h-5 w-5 text-cricket-red" />
+                <p className="mt-4 text-4xl font-bold">{item.stat}</p>
+                <p className="mt-2 text-sm uppercase tracking-[0.18em] text-muted-foreground">{item.label}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-10 flex flex-col items-start justify-between gap-6 border border-cricket-dark bg-cricket-dark px-6 py-8 text-white sm:flex-row sm:items-center sm:px-8">
+          <div>
+            <p className="font-mono text-[0.72rem] uppercase tracking-[0.32em] text-cricket-green-light">Ready to explore?</p>
+            <h2 className="mt-2 text-3xl">Bring every player, match, and coaching decision into one system.</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
+              Start with one platform that helps your academy stay organized, visible, and data-driven from daily training to match day.
+            </p>
+          </div>
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 bg-cricket-red px-6 py-3 text-sm font-semibold uppercase tracking-[0.16em] text-primary-foreground transition hover:bg-cricket-red/90"
+          >
+            Try now
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
