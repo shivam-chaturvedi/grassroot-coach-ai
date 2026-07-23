@@ -35,9 +35,13 @@ export function CreateMatchModal({ open, onClose }: { open: boolean; onClose: ()
     matchType: "t20", ground: "", tossResult: "", tossWinner: "",
   });
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectionError, setSelectionError] = useState(false);
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (selectedPlayers.length !== 11) {
+        throw new Error("Please select exactly 11 players before creating the match.");
+      }
       if (!profileQuery.data?.academy_id) {
         throw new Error("No academy found for this account.");
       }
@@ -76,9 +80,18 @@ export function CreateMatchModal({ open, onClose }: { open: boolean; onClose: ()
   if (!open) return null;
 
   const togglePlayer = (id: string) => {
+    setSelectionError(false);
     setSelectedPlayers(prev =>
       prev.includes(id) ? prev.filter(p => p !== id) : prev.length < 11 ? [...prev, id] : prev
     );
+  };
+
+  const handleCreateMatch = () => {
+    if (selectedPlayers.length !== 11) {
+      setSelectionError(true);
+      return;
+    }
+    createMutation.mutate();
   };
 
   return (
@@ -151,14 +164,15 @@ export function CreateMatchModal({ open, onClose }: { open: boolean; onClose: ()
                   type="button"
                   onClick={() => togglePlayer(p.id)}
                   className={`p-2 border text-left transition-all ${selectedPlayers.includes(p.id) ? "border-cricket-red bg-cricket-red/5" : "border-input hover:bg-accent"}`}
+                  title={p.full_name}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(p.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
-                      #{p.jersey}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className={`h-6 w-6 shrink-0 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(p.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
+                      #{p.jersey_number}
                     </div>
-                    <div>
-                      <div className="text-xs font-semibold">{p.full_name}</div>
-                      <div className="text-[0.55rem] text-muted-foreground">{p.player_role}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-semibold">{p.full_name}</div>
+                      <div className="truncate text-[0.55rem] text-muted-foreground">{labelFromEnum(p.player_role)}</div>
                     </div>
                   </div>
                 </button>
@@ -167,12 +181,29 @@ export function CreateMatchModal({ open, onClose }: { open: boolean; onClose: ()
           </div>
         </div>
         <div className="flex gap-2 p-4 border-t border-border">
-          <Button variant="cricket" className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+          <Button variant="cricket" className="flex-1" onClick={handleCreateMatch} disabled={createMutation.isPending}>
             {createMutation.isPending ? "Creating..." : "Create Match"}
           </Button>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
         </div>
       </div>
+      {selectionError && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4" onClick={() => setSelectionError(false)}>
+          <div className="w-full max-w-sm border border-border bg-card shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-sm font-bold">Playing XI incomplete</h3>
+            </div>
+            <div className="px-5 py-4 text-sm text-muted-foreground">
+              Please select exactly 11 players before creating the match. You have selected {selectedPlayers.length}/11.
+            </div>
+            <div className="border-t border-border px-5 py-4">
+              <Button variant="cricket" className="w-full" onClick={() => setSelectionError(false)}>
+                Select players
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

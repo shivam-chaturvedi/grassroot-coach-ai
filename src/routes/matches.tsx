@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, MapPin, Clock, Plus } from "lucide-react";
@@ -16,6 +16,10 @@ export const Route = createFileRoute("/matches")({
 
 function MatchesPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const isMatchDetail = useRouterState({
+    select: (state) => state.matches.some((match) => match.routeId === "/matches/$matchId"),
+  });
   const [showCreateMatch, setShowCreateMatch] = useState(false);
   const [completingMatch, setCompletingMatch] = useState<MatchRow | null>(null);
   const [completeForm, setCompleteForm] = useState({
@@ -42,7 +46,7 @@ function MatchesPage() {
   const history = (matchesQuery.data ?? []).filter((match) => match.status === "completed");
   const canManageMatches = canManageAcademyUi(profileQuery.data?.role);
   const openMatchWindow = (matchId: string) => {
-    window.open(`/matches/${matchId}`, "_blank", "noopener,noreferrer");
+    void navigate({ to: "/matches/$matchId", params: { matchId } });
   };
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -69,6 +73,10 @@ function MatchesPage() {
       });
     },
   });
+
+  if (isMatchDetail) {
+    return <Outlet />;
+  }
 
   return (
     <div className="p-4 lg:p-6 space-y-5">

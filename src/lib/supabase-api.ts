@@ -881,20 +881,30 @@ export async function createMatchStats(payload: MatchStatsPayload) {
 }
 
 export async function upsertTeamRoster(payload: TeamRosterPayload) {
+  const rosterByPlayerId = new Map(payload.roster.map((entry) => [entry.playerId, entry]));
+  const cleanRoster = [...rosterByPlayerId.values()].map((entry, index) => ({
+    team_id: payload.teamId,
+    player_id: entry.playerId,
+    season_id: payload.seasonId,
+    batting_position: index + 1,
+    is_available: entry.isAvailable,
+    is_captain: entry.isCaptain,
+    is_vice_captain: entry.isViceCaptain,
+  }));
+
+  const { error: deleteError } = await supabase
+    .from("team_roster")
+    .delete()
+    .eq("team_id", payload.teamId);
+  if (deleteError) throw deleteError;
+
+  if (cleanRoster.length === 0) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("team_roster")
-    .upsert(
-      payload.roster.map((entry) => ({
-        team_id: payload.teamId,
-        player_id: entry.playerId,
-        season_id: payload.seasonId,
-        batting_position: entry.battingPosition,
-        is_available: entry.isAvailable,
-        is_captain: entry.isCaptain,
-        is_vice_captain: entry.isViceCaptain,
-      })),
-      { onConflict: "team_id,player_id,season_id" },
-    )
+    .insert(cleanRoster)
     .select("*");
   if (error) throw error;
   return (data ?? []) as MatchSquadRow[];

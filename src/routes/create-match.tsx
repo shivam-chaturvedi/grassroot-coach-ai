@@ -42,10 +42,14 @@ function CreateMatchPage() {
     tossWinner: "",
   });
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+  const [selectionError, setSelectionError] = useState(false);
   const canManageMatchSetup = canManageAcademyUi(profileQuery.data?.role);
 
   const createMutation = useMutation({
     mutationFn: async () => {
+      if (selectedPlayers.length !== 11) {
+        throw new Error("Please select exactly 11 players before creating the match.");
+      }
       if (!profileQuery.data?.academy_id) {
         throw new Error("No academy found for this account.");
       }
@@ -81,7 +85,16 @@ function CreateMatchPage() {
   });
 
   const togglePlayer = (id: string) => {
+    setSelectionError(false);
     setSelectedPlayers((prev) => (prev.includes(id) ? prev.filter((playerId) => playerId !== id) : prev.length < 11 ? [...prev, id] : prev));
+  };
+
+  const handleCreateMatch = () => {
+    if (selectedPlayers.length !== 11) {
+      setSelectionError(true);
+      return;
+    }
+    createMutation.mutate();
   };
 
   if (profileQuery.data && !canManageMatchSetup) {
@@ -160,14 +173,15 @@ function CreateMatchPage() {
                 type="button"
                 onClick={() => togglePlayer(player.id)}
                 className={`stat-card text-left transition-all ${selectedPlayers.includes(player.id) ? "border-cricket-red bg-cricket-red/5" : ""}`}
+                title={player.full_name}
               >
-                <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(player.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className={`h-6 w-6 shrink-0 flex items-center justify-center text-[0.6rem] font-bold ${selectedPlayers.includes(player.id) ? "bg-cricket-red text-primary-foreground" : "bg-accent"}`}>
                     #{player.jersey_number}
                   </div>
-                  <div>
-                    <div className="text-xs font-semibold">{player.full_name}</div>
-                    <div className="text-[0.55rem] text-muted-foreground">{labelFromEnum(player.player_role)}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs font-semibold">{player.full_name}</div>
+                    <div className="truncate text-[0.55rem] text-muted-foreground">{labelFromEnum(player.player_role)}</div>
                   </div>
                 </div>
               </button>
@@ -176,12 +190,30 @@ function CreateMatchPage() {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button variant="cricket" className="flex-1" onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+          <Button variant="cricket" className="flex-1" onClick={handleCreateMatch} disabled={createMutation.isPending}>
             {createMutation.isPending ? "Creating..." : "Create Match"}
           </Button>
           <Button variant="outline">Cancel</Button>
         </div>
       </div>
+
+      {selectionError && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4" onClick={() => setSelectionError(false)}>
+          <div className="w-full max-w-sm border border-border bg-card shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-sm font-bold">Playing XI incomplete</h3>
+            </div>
+            <div className="px-5 py-4 text-sm text-muted-foreground">
+              Please select exactly 11 players before creating the match. You have selected {selectedPlayers.length}/11.
+            </div>
+            <div className="border-t border-border px-5 py-4">
+              <Button variant="cricket" className="w-full" onClick={() => setSelectionError(false)}>
+                Select players
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

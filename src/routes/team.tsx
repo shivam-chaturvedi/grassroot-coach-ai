@@ -14,6 +14,20 @@ type SquadMember = PlayerRow & {
   battingPos: number;
 };
 
+function normalizeSquad(members: SquadMember[]) {
+  const uniqueByPlayer = new Map<string, SquadMember>();
+  for (const member of members) {
+    if (!uniqueByPlayer.has(member.id)) {
+      uniqueByPlayer.set(member.id, member);
+    }
+  }
+
+  return [...uniqueByPlayer.values()].map((member, index) => ({
+    ...member,
+    battingPos: index + 1,
+  }));
+}
+
 export const Route = createFileRoute("/team")({
   component: TeamPage,
   head: () => ({ meta: [{ title: "Team Management — CricketIQ" }] }),
@@ -46,29 +60,42 @@ function TeamPage() {
 
   const initialSquad = useMemo(() => {
     const roster = rosterQuery.data ?? [];
+    const rosterPlayers = roster
+      .map((entry) => {
+        const player = playersQuery.data?.find((item) => item.id === entry.player_id);
+        if (!player) return null;
+        return {
+          ...player,
+          available: entry.is_available,
+          captain: entry.is_captain,
+          viceCaptain: entry.is_vice_captain,
+          battingPos: entry.batting_position ?? 1,
+        };
+      })
+      .filter(Boolean) as SquadMember[];
+
+    const rosterPlayerIds = new Set(rosterPlayers.map((player) => player.id));
+    const missingPlayers = (playersQuery.data ?? [])
+      .filter((player) => !rosterPlayerIds.has(player.id))
+      .map((player) => ({
+        ...player,
+        available: true,
+        captain: false,
+        viceCaptain: false,
+        battingPos: rosterPlayers.length + 1,
+      }));
+
     if (roster.length > 0) {
-      return roster
-        .map((entry) => {
-          const player = playersQuery.data?.find((item) => item.id === entry.player_id);
-          if (!player) return null;
-          return {
-            ...player,
-            available: entry.is_available,
-            captain: entry.is_captain,
-            viceCaptain: entry.is_vice_captain,
-            battingPos: entry.batting_position ?? 1,
-          };
-        })
-        .filter(Boolean) as SquadMember[];
+      return normalizeSquad([...rosterPlayers, ...missingPlayers]);
     }
 
-    return (playersQuery.data ?? []).map((player, index) => ({
+    return normalizeSquad((playersQuery.data ?? []).map((player, index) => ({
       ...player,
       available: true,
       captain: index === 0,
       viceCaptain: index === 1,
       battingPos: index + 1,
-    }));
+    })));
   }, [playersQuery.data, rosterQuery.data]);
 
   const [squad, setSquad] = useState<SquadMember[]>([]);
@@ -85,9 +112,9 @@ function TeamPage() {
       return upsertTeamRoster({
         teamId: currentTeam.id,
         seasonId: currentTeam.season_id,
-        roster: squad.map((player) => ({
+        roster: normalizeSquad(squad).map((player, index) => ({
           playerId: player.id,
-          battingPosition: player.battingPos,
+          battingPosition: index + 1,
           isAvailable: player.available,
           isCaptain: player.captain,
           isViceCaptain: player.viceCaptain,

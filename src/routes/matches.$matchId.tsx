@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Clock, MapPin, ShieldCheck, Target, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -119,6 +119,7 @@ function MatchDetailPage() {
   const queryClient = useQueryClient();
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
   const [editorState, setEditorState] = useState<EditorState | null>(null);
+  const [autoOpenedPlayerId, setAutoOpenedPlayerId] = useState<string | null>(null);
 
   const sessionQuery = useQuery({ queryKey: ["session"], queryFn: fetchSession, staleTime: 60_000 });
   const profileQuery = useQuery({
@@ -172,6 +173,9 @@ function MatchDetailPage() {
   }, [playersQuery.data, squadsQuery.data, statsQuery.data]);
 
   const isPlayerAssigned = !!squadRows.find((row) => row.player.id === linkedPlayer?.id);
+  const ownSquadRow = squadRows.find((row) => row.player.id === linkedPlayer?.id);
+  const match = matchQuery.data;
+  const completed = match?.status === "completed";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -228,6 +232,32 @@ function MatchDetailPage() {
     },
   });
 
+  useEffect(() => {
+    if (
+      profileQuery.data?.role !== "player" ||
+      !completed ||
+      !linkedPlayer ||
+      !ownSquadRow ||
+      editingPlayerId ||
+      editorState ||
+      autoOpenedPlayerId === linkedPlayer.id
+    ) {
+      return;
+    }
+
+    setEditingPlayerId(linkedPlayer.id);
+    setEditorState(toEditorState(linkedPlayer.id, ownSquadRow.squad, ownSquadRow.stats));
+    setAutoOpenedPlayerId(linkedPlayer.id);
+  }, [
+    autoOpenedPlayerId,
+    completed,
+    editingPlayerId,
+    editorState,
+    linkedPlayer,
+    ownSquadRow,
+    profileQuery.data?.role,
+  ]);
+
   if (!matchQuery.data) {
     return (
       <div className="p-4 lg:p-6">
@@ -236,9 +266,6 @@ function MatchDetailPage() {
     );
   }
 
-  const match = matchQuery.data;
-  const completed = match.status === "completed";
-
   return (
     <div className="p-4 lg:p-6 space-y-5">
       {profileQuery.data?.role === "player" && !isPlayerAssigned && (
@@ -246,6 +273,15 @@ function MatchDetailPage() {
           <div className="text-sm font-semibold">You are not selected in this match</div>
           <div className="mt-1 text-xs text-muted-foreground">
             You can still view the match summary, but you will not see a personal analysis form unless you are part of the playing XI.
+          </div>
+        </div>
+      )}
+
+      {profileQuery.data?.role === "player" && isPlayerAssigned && !completed && (
+        <div className="stat-card border-cricket-red">
+          <div className="text-sm font-semibold">Stats form unlocks after completion</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            This match is still {formatEnumLabel(match.status)}, so your post-match analysis form will open once the match is marked completed.
           </div>
         </div>
       )}
@@ -291,15 +327,15 @@ function MatchDetailPage() {
 
               return (
                 <div key={player.id} className={`stat-card ${isOwnCard ? "border-cricket-red" : ""}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold">{index + 1}. {player.full_name}</div>
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold" title={player.full_name}>{index + 1}. {player.full_name}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         #{player.jersey_number} · {formatEnumLabel(player.player_role)}
                         {squad.role_in_match ? ` · ${squad.role_in_match}` : ""}
                       </div>
                     </div>
-                    <div className="flex flex-wrap justify-end gap-1">
+                    <div className="flex max-w-[5.5rem] shrink-0 flex-wrap justify-end gap-1">
                       {squad.is_captain && <span className="cricket-badge badge-dark">Captain</span>}
                       {squad.is_vice_captain && <span className="cricket-badge badge-green">Vice</span>}
                       {isOwnCard && <span className="cricket-badge badge-red">You</span>}
