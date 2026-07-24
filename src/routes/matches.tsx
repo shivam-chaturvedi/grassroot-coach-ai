@@ -132,7 +132,7 @@ function MatchesPage() {
               >
                 Open match
               </Button>
-              {canManageMatches && (
+              {canManageMatches && match.status !== "completed" && (
                 <Button
                   variant="outline"
                   size="xs"

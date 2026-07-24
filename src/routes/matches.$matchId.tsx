@@ -258,7 +258,7 @@ function MatchDetailPage() {
     profileQuery.data?.role,
   ]);
 
-  if (!matchQuery.data) {
+  if (!match) {
     return (
       <div className="p-4 lg:p-6">
         <div className="stat-card text-sm text-muted-foreground">Match details are not available right now.</div>

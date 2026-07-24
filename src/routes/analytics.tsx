@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Brain, Zap, Target, Shield, BarChart3, Sparkles, ClipboardCheck } from "lucide-react";
+import { Brain, Zap, Target, Shield, BarChart3, Sparkles, ClipboardCheck, RefreshCw, Cpu, Award } from "lucide-react";
 import {
   RadarChart,
   Radar,
@@ -27,11 +27,36 @@ import {
   fetchSession,
   formatEnumLabel,
 } from "@/lib/supabase-api";
+import { generateGeminiBestPlaying11, generateGeminiTeamInsights } from "@/lib/gemini";
+import { evaluatePlayerScore, selectBestPlaying11 } from "@/lib/player-algorithm";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/analytics")({
   component: AnalyticsPage,
-  head: () => ({ meta: [{ title: "AI Analytics" }] }),
+  head: () => ({ meta: [{ title: "AI Analytics — CricketIQ" }] }),
 });
+
+function average(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+function aggregateTags(tags: (string[] | string | undefined | null)[]): { label: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const item of tags) {
+    if (!item) continue;
+    const list = Array.isArray(item) ? item : [item];
+    for (const tag of list) {
+      const clean = tag.trim();
+      if (clean) {
+        map.set(clean, (map.get(clean) || 0) + 1);
+      }
+    }
+  }
+  return [...map.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
 function AnalyticsPage() {
   const [tab, setTab] = useState<"xi" | "reviews" | "compare" | "simulation">("xi");
@@ -65,6 +90,30 @@ function AnalyticsPage() {
     enabled: !!profileQuery.data?.academy_id && (matchesQuery.data?.length ?? 0) > 0,
   });
 
+  // Gemini 2.5 Flash Lite Queries
+  const geminiXIQuery = useQuery({
+    queryKey: ["gemini-best-xi", profileQuery.data?.academy_id, playersQuery.data?.length],
+    queryFn: () =>
+      generateGeminiBestPlaying11(
+        playersQuery.data ?? [],
+        seasonStatsQuery.data ?? [],
+        matchStatsQuery.data ?? [],
+      ),
+    enabled: !!playersQuery.data && playersQuery.data.length > 0,
+  });
+
+  const geminiInsightsQuery = useQuery({
+    queryKey: ["gemini-team-insights", profileQuery.data?.academy_id, playersQuery.data?.length],
+    queryFn: () =>
+      generateGeminiTeamInsights(
+        "Academy Squad",
+        playersQuery.data ?? [],
+        seasonStatsQuery.data ?? [],
+        matchStatsQuery.data ?? [],
+      ),
+    enabled: !!playersQuery.data && playersQuery.data.length > 0,
+  });
+
   const playerLookup = useMemo(
     () => new Map((playersQuery.data ?? []).map((player) => [player.id, player])),
     [playersQuery.data],
@@ -83,46 +132,21 @@ function AnalyticsPage() {
     return grouped;
   }, [matchStatsQuery.data]);
 
-  const aiXI = useMemo(() => {
-    return (playersQuery.data ?? []).map((player) => {
-      const season = seasonLookup.get(player.id);
-      const reviews = statsByPlayer.get(player.id) ?? [];
-      const avgImpact = average(reviews.map((item) => item.match_impact_rating));
-      const avgCoach = average(reviews.map((item) => item.coach_rating));
-      const avgConfidence = average(reviews.map((item) => item.self_confidence_rating));
-      const aiScore = Math.round(
-        player.fitness_rating * 0.18 +
-        player.consistency_rating * 0.2 +
-        player.aggression_rating * 0.12 +
-        (season?.strike_rate ?? 0) * 0.15 +
-        (season?.batting_average ?? 0) * 0.1 +
-        avgImpact * 4 +
-        avgCoach * 3 +
-        avgConfidence * 2
-      );
-
-      return {
-        ...player,
-        aiScore: Math.min(100, aiScore),
-        avgImpact,
-        avgCoach,
-        avgConfidence,
-      };
-    });
+  const evaluatedPlayers = useMemo(() => {
+    return (playersQuery.data ?? []).map((player) =>
+      evaluatePlayerScore(
+        player,
+        seasonLookup.get(player.id),
+        statsByPlayer.get(player.id) ?? [],
+      ),
+    );
   }, [playersQuery.data, seasonLookup, statsByPlayer]);
 
-  const battingOrder = useMemo(() => {
-    return [...aiXI]
-      .sort((a, b) => b.aiScore - a.aiScore)
-      .slice(0, 11)
-      .map((player, index) => ({
-        pos: index + 1,
-        id: player.id,
-        name: player.full_name,
-        role: formatEnumLabel(player.player_role),
-        reason: `AI ${player.aiScore} · impact ${player.avgImpact.toFixed(1)} · coach ${player.avgCoach.toFixed(1)} · confidence ${player.avgConfidence.toFixed(1)}`,
-      }));
-  }, [aiXI]);
+  const localAlgorithmicResult = useMemo(() => {
+    return selectBestPlaying11(evaluatedPlayers);
+  }, [evaluatedPlayers]);
+
+  const playingXIData = geminiXIQuery.data?.playingXI || localAlgorithmicResult.playingXI;
 
   const reviewCoverage = useMemo(() => {
     const stats = matchStatsQuery.data ?? [];
@@ -152,53 +176,50 @@ function AnalyticsPage() {
     [matchStatsQuery.data],
   );
 
-  const comparePlayers = playersQuery.data ?? [];
-  const playerA = comparePlayers[compareA] ?? comparePlayers[0];
-  const playerB = comparePlayers[compareB] ?? comparePlayers[1] ?? comparePlayers[0];
-  const playerAReviews = playerA ? statsByPlayer.get(playerA.id) ?? [] : [];
-  const playerBReviews = playerB ? statsByPlayer.get(playerB.id) ?? [] : [];
-
-  const radarCompareData = playerA && playerB ? [
-    { stat: "Runs", a: seasonLookup.get(playerA.id)?.runs ?? 0, b: seasonLookup.get(playerB.id)?.runs ?? 0 },
-    { stat: "SR", a: seasonLookup.get(playerA.id)?.strike_rate ?? 0, b: seasonLookup.get(playerB.id)?.strike_rate ?? 0 },
-    { stat: "Impact", a: average(playerAReviews.map((item) => item.match_impact_rating)) * 10, b: average(playerBReviews.map((item) => item.match_impact_rating)) * 10 },
-    { stat: "Confidence", a: average(playerAReviews.map((item) => item.self_confidence_rating)) * 10, b: average(playerBReviews.map((item) => item.self_confidence_rating)) * 10 },
-    { stat: "Coach", a: average(playerAReviews.map((item) => item.coach_rating)) * 10, b: average(playerBReviews.map((item) => item.coach_rating)) * 10 },
-    { stat: "Fitness", a: playerA.fitness_rating, b: playerB.fitness_rating },
-  ] : [];
-
-  const completedMatches = (matchesQuery.data ?? []).filter((match) => match.status === "completed");
-  const reviewFeed = useMemo(() => {
+  const recentImpactTrend = useMemo(() => {
+    const completedMatches = (matchesQuery.data ?? []).filter((match) => match.status === "completed");
     return completedMatches.slice(0, 6).map((match) => {
-      const rows = (matchStatsQuery.data ?? []).filter((item) => item.match_id === match.id);
-      const topImpact = [...rows].sort((a, b) => b.match_impact_rating - a.match_impact_rating)[0];
-      const biggestMistake = aggregateTags(rows.flatMap((item) => item.mistake_tags))[0];
-      const strongestPositive = aggregateTags(rows.flatMap((item) => item.positive_tags))[0];
+      const matchStats = (matchStatsQuery.data ?? []).filter((item) => item.match_id === match.id);
+      return {
+        label: match.opponent_name || "Match",
+        impact: average(matchStats.map((item) => item.match_impact_rating)) * 10,
+        confidence: average(matchStats.map((item) => item.self_confidence_rating)) * 10,
+        coach: average(matchStats.map((item) => item.coach_rating)) * 10,
+      };
+    });
+  }, [matchesQuery.data, matchStatsQuery.data]);
+
+  const reviewFeed = useMemo(() => {
+    const completedMatches = (matchesQuery.data ?? []).filter((match) => match.status === "completed");
+    return completedMatches.slice(0, 6).map((match, index) => {
+      const matchStats = (matchStatsQuery.data ?? []).filter((item) => item.match_id === match.id);
       return {
         id: match.id,
         opponent: match.opponent_name,
+        date: new Date(match.scheduled_at).toLocaleDateString(),
         result: match.result_summary ?? "Completed",
-        summary: [
-          topImpact ? `Top impact: ${playerLookup.get(topImpact.player_id)?.full_name ?? "Player"} (${topImpact.match_impact_rating}/10)` : null,
-          strongestPositive ? `Recurring positive: ${strongestPositive.label}` : null,
-          biggestMistake ? `Main correction area: ${biggestMistake.label}` : null,
-        ].filter(Boolean).join(" · "),
+        reviewCount: matchStats.length,
+        avgCoach: average(matchStats.map((item) => item.coach_rating)).toFixed(1),
+        avgConfidence: average(matchStats.map((item) => item.self_confidence_rating)).toFixed(1),
       };
     });
-  }, [completedMatches, matchStatsQuery.data, playerLookup]);
+  }, [matchesQuery.data, matchStatsQuery.data]);
 
-  const recentImpactTrend = useMemo(() => {
-    return completedMatches.slice(0, 6).map((match, index) => {
-      const rows = (matchStatsQuery.data ?? []).filter((item) => item.match_id === match.id);
-      return {
-        label: `M${index + 1}`,
-        impact: average(rows.map((item) => item.match_impact_rating)) * 10,
-        confidence: average(rows.map((item) => item.self_confidence_rating)) * 10,
-      };
-    }).reverse();
-  }, [completedMatches, matchStatsQuery.data]);
+  const playerA = evaluatedPlayers[compareA] || evaluatedPlayers[0];
+  const playerB = evaluatedPlayers[compareB] || evaluatedPlayers[1] || evaluatedPlayers[0];
 
-  const predictedScore = Math.round((seasonStatsQuery.data?.reduce((sum, item) => sum + item.runs, 0) ?? 0) / Math.max(1, playersQuery.data?.length ?? 1));
+  const radarData = useMemo(() => {
+    if (!playerA || !playerB) return [];
+    return [
+      { subject: "Batting", A: playerA.battingScore, B: playerB.battingScore },
+      { subject: "Bowling", A: playerA.bowlingScore, B: playerB.bowlingScore },
+      { subject: "Coach Rating", A: playerA.coachScore, B: playerB.coachScore },
+      { subject: "Confidence", A: playerA.playerConfidenceScore, B: playerB.playerConfidenceScore },
+      { subject: "Fitness", A: playerA.fitnessScore, B: playerB.fitnessScore },
+      { subject: "Impact", A: playerA.recentImpactScore, B: playerB.recentImpactScore },
+    ];
+  }, [playerA, playerB]);
+
   const winProbability = Math.min(
     92,
     Math.max(
@@ -212,26 +233,57 @@ function AnalyticsPage() {
 
   const tabs = [
     { key: "xi" as const, label: "Selection Engine", icon: Brain },
-    { key: "reviews" as const, label: "Review Intelligence", icon: ClipboardCheck },
+    { key: "reviews" as const, label: "Coach & AI Insights", icon: ClipboardCheck },
     { key: "compare" as const, label: "Player Compare", icon: BarChart3 },
     { key: "simulation" as const, label: "Match Projection", icon: Zap },
   ];
 
   return (
     <div className="p-4 lg:p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-          <Brain className="w-5 h-5 text-cricket-red" /> Performance Intelligence
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Selection, review, and trend analysis built from real post-match feedback.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
+            <Brain className="w-5 h-5 text-cricket-red" /> Performance Intelligence
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Selection, review, and performance analytics built from match stats.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="cricket-badge badge-dark flex items-center gap-1">
+            <Brain className="w-3 h-3 text-cricket-green" />
+            AI Intelligence
+          </span>
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => {
+              void geminiXIQuery.refetch();
+              void geminiInsightsQuery.refetch();
+            }}
+            disabled={geminiXIQuery.isFetching}
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${geminiXIQuery.isFetching ? "animate-spin" : ""}`} />
+            Refresh Insights
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Review Coverage", value: `${reviewCoverage}%` },
-          { label: "Avg Confidence", value: (average((matchStatsQuery.data ?? []).map((item) => item.self_confidence_rating))).toFixed(1) },
-          { label: "Avg Impact", value: (average((matchStatsQuery.data ?? []).map((item) => item.match_impact_rating))).toFixed(1) },
-          { label: "Coach Score", value: (average((matchStatsQuery.data ?? []).map((item) => item.coach_rating))).toFixed(1) },
+          {
+            label: "Avg Confidence",
+            value: average((matchStatsQuery.data ?? []).map((item) => item.self_confidence_rating)).toFixed(1),
+          },
+          {
+            label: "Avg Impact",
+            value: average((matchStatsQuery.data ?? []).map((item) => item.match_impact_rating)).toFixed(1),
+          },
+          {
+            label: "Coach Score",
+            value: average((matchStatsQuery.data ?? []).map((item) => item.coach_rating)).toFixed(1),
+          },
         ].map((item) => (
           <div key={item.label} className="stat-card">
             <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase tracking-widest">{item.label}</div>
@@ -240,9 +292,52 @@ function AnalyticsPage() {
         ))}
       </div>
 
+      {/* Performance Insights Banner */}
+      {geminiInsightsQuery.data && (
+        <div className="stat-card border-l-4 border-l-cricket-red bg-accent/20">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <div className="flex items-center gap-2 font-bold text-sm">
+              <Sparkles className="w-4 h-4 text-cricket-red" /> Team Performance Insights
+            </div>
+          </div>
+          <p className="text-xs font-semibold text-foreground">{geminiInsightsQuery.data.headline}</p>
+
+          <div className="grid md:grid-cols-2 gap-3 mt-3 text-xs">
+            <div className="bg-background/80 p-2.5 rounded border border-border">
+              <div className="font-semibold text-cricket-green mb-1 flex items-center gap-1">
+                <Shield className="w-3.5 h-3.5" /> Key Team Strengths
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                {geminiInsightsQuery.data.keyStrengths.map((str, idx) => (
+                  <li key={idx}>{str}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-background/80 p-2.5 rounded border border-border">
+              <div className="font-semibold text-cricket-red mb-1 flex items-center gap-1">
+                <Target className="w-3.5 h-3.5" /> Tactical Recommendations
+              </div>
+              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground">
+                {geminiInsightsQuery.data.tacticalRecommendations.map((rec, idx) => (
+                  <li key={idx}>{rec}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-1 overflow-x-auto pb-1">
         {tabs.map((tabItem) => (
-          <button key={tabItem.key} onClick={() => setTab(tabItem.key)} className={`flex items-center gap-1.5 px-4 h-9 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors border ${tab === tabItem.key ? "bg-primary text-primary-foreground border-primary" : "bg-background border-input hover:bg-accent"}`}>
+          <button
+            key={tabItem.key}
+            onClick={() => setTab(tabItem.key)}
+            className={`flex items-center gap-1.5 px-4 h-9 text-xs font-semibold uppercase tracking-wider whitespace-nowrap transition-colors border ${
+              tab === tabItem.key
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-input hover:bg-accent"
+            }`}
+          >
             <tabItem.icon className="w-3.5 h-3.5" /> {tabItem.label}
           </button>
         ))}
@@ -251,20 +346,59 @@ function AnalyticsPage() {
       {tab === "xi" && (
         <div className="space-y-5">
           <div className="tactical-card">
-            <div className="section-title flex items-center gap-1"><Brain className="w-3 h-3" /> Recommended Playing XI</div>
-            <p className="text-xs text-muted-foreground mb-3">Selection score blends season production, match impact, coach review, and player confidence.</p>
-            <div className="space-y-1.5">
-              {battingOrder.map((item) => (
-                <div key={`${item.pos}-${item.id}`} className="flex items-center gap-3 p-2 bg-background border border-border hover:border-cricket-red transition-colors">
-                  <div className="w-7 h-7 bg-cricket-red text-primary-foreground flex items-center justify-center text-xs font-bold">{item.pos}</div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold">{item.name}</div>
-                    <div className="text-[0.6rem] text-muted-foreground">{item.reason}</div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+              <div>
+                <div className="section-title flex items-center gap-1">
+                  <Brain className="w-4 h-4 text-cricket-red" /> Recommended Playing XI
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  AI-selected XI combining match ratings, season metrics, coach scores, and role balance.
+                </p>
+              </div>
+              {geminiXIQuery.data?.aiTacticalOverview && (
+                <div className="text-xs bg-accent/40 p-2 rounded max-w-lg border border-border">
+                  <span className="font-bold text-foreground">AI Strategy: </span>
+                  <span className="text-muted-foreground">{geminiXIQuery.data.aiTacticalOverview}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {playingXIData.map((item) => (
+                <div
+                  key={`${item.assignedPosition}-${item.id}`}
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 p-2.5 bg-background border border-border hover:border-cricket-red transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 bg-cricket-red text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                      {item.assignedPosition}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold flex items-center gap-2">
+                        {item.full_name}
+                        <span className="cricket-badge badge-dark text-[0.6rem]">{item.designatedRole}</span>
+                      </div>
+                      <div className="text-[0.65rem] text-muted-foreground">{item.selectionReason}</div>
+                    </div>
                   </div>
-                  <span className="cricket-badge badge-dark">{item.role}</span>
+
+                  <div className="sm:ml-auto flex items-center gap-2 text-xs">
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-cricket-green text-sm">{item.compositeScore}</span>
+                      <span className="text-[0.6rem] text-muted-foreground block">Composite</span>
+                    </div>
+                    <div className="text-right pl-2 border-l border-border">
+                      <span className="font-mono font-semibold text-foreground">{item.coachScore}</span>
+                      <span className="text-[0.6rem] text-muted-foreground block">Coach</span>
+                    </div>
+                  </div>
                 </div>
               ))}
-              {battingOrder.length === 0 && <div className="text-sm text-muted-foreground">Add player reviews to generate a stronger playing XI.</div>}
+              {playingXIData.length === 0 && (
+                <div className="text-sm text-muted-foreground py-4 text-center">
+                  Add player reviews to generate a stronger playing XI.
+                </div>
+              )}
             </div>
           </div>
 
@@ -284,17 +418,33 @@ function AnalyticsPage() {
 
             <div className="space-y-3">
               <div className="tactical-card">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Sparkles className="w-4 h-4 text-cricket-green" /> Positive themes</div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Sparkles className="w-4 h-4 text-cricket-green" /> Positive themes
+                </div>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {commonPositives.slice(0, 8).map((item) => <span key={item.label} className="cricket-badge badge-green">{item.label} · {item.count}</span>)}
-                  {commonPositives.length === 0 && <div className="text-xs text-muted-foreground">No positive review themes captured yet.</div>}
+                  {commonPositives.slice(0, 8).map((item) => (
+                    <span key={item.label} className="cricket-badge badge-green">
+                      {item.label} · {item.count}
+                    </span>
+                  ))}
+                  {commonPositives.length === 0 && (
+                    <div className="text-xs text-muted-foreground">No positive review themes captured yet.</div>
+                  )}
                 </div>
               </div>
               <div className="tactical-card">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Target className="w-4 h-4 text-cricket-red" /> Recurring correction areas</div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Target className="w-4 h-4 text-cricket-red" /> Recurring correction areas
+                </div>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {commonMistakes.slice(0, 8).map((item) => <span key={item.label} className="cricket-badge badge-dark">{item.label} · {item.count}</span>)}
-                  {commonMistakes.length === 0 && <div className="text-xs text-muted-foreground">No mistake patterns found yet.</div>}
+                  {commonMistakes.slice(0, 8).map((item) => (
+                    <span key={item.label} className="cricket-badge badge-dark">
+                      {item.label} · {item.count}
+                    </span>
+                  ))}
+                  {commonMistakes.length === 0 && (
+                    <div className="text-xs text-muted-foreground">No mistake patterns found yet.</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -321,7 +471,9 @@ function AnalyticsPage() {
 
             <div className="space-y-3">
               <div className="tactical-card">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Shield className="w-4 h-4 text-cricket-green" /> AI reading</div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Shield className="w-4 h-4 text-cricket-green" /> AI reading
+                </div>
                 <div className="mt-2 text-xs text-muted-foreground">
                   {commonMistakes[0]
                     ? `The strongest recurring issue is "${commonMistakes[0].label}". That makes it the first training priority for the next cycle.`
@@ -329,7 +481,9 @@ function AnalyticsPage() {
                 </div>
               </div>
               <div className="tactical-card">
-                <div className="flex items-center gap-2 text-sm font-semibold"><Brain className="w-4 h-4 text-cricket-red" /> Response plan</div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Brain className="w-4 h-4 text-cricket-red" /> Response plan
+                </div>
                 <div className="mt-2 text-xs text-muted-foreground">
                   {commonPositives[0]
                     ? `The squad's clearest strength signal is "${commonPositives[0].label}". The system would preserve that while correcting the top mistake trend.`
@@ -348,137 +502,88 @@ function AnalyticsPage() {
                     <div className="text-sm font-semibold">vs {item.opponent}</div>
                     <span className="cricket-badge badge-dark">{item.result}</span>
                   </div>
-                  <div className="mt-2 text-xs text-muted-foreground">{item.summary || "Waiting for detailed player reviews to generate a stronger summary."}</div>
+                  <div className="mt-1 text-xs text-muted-foreground flex gap-4">
+                    <span>Date: {item.date}</span>
+                    <span>Reviews: {item.reviewCount}</span>
+                    <span>Avg Coach: {item.avgCoach}</span>
+                    <span>Avg Confidence: {item.avgConfidence}</span>
+                  </div>
                 </div>
               ))}
-              {reviewFeed.length === 0 && <div className="stat-card text-sm text-muted-foreground">No completed match reviews yet.</div>}
+              {reviewFeed.length === 0 && (
+                <div className="stat-card text-sm text-muted-foreground">No completed match reviews yet.</div>
+              )}
             </div>
           </div>
         </div>
       )}
 
       {tab === "compare" && (
-        <div className="space-y-5">
-          <div className="grid md:grid-cols-2 gap-3">
-            <div>
-              <label className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">Player A</label>
-              <select className="mt-1 w-full h-9 px-3 text-sm bg-background border border-input focus:border-cricket-red focus:outline-none" value={compareA} onChange={e => setCompareA(Number(e.target.value))}>
-                {comparePlayers.map((player, index) => <option key={player.id} value={index}>{player.full_name}</option>)}
+        <div className="space-y-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="stat-card">
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Select Player A</label>
+              <select
+                className="w-full h-9 bg-background border border-input px-3 text-xs"
+                value={compareA}
+                onChange={(e) => setCompareA(Number(e.target.value))}
+              >
+                {evaluatedPlayers.map((p, idx) => (
+                  <option key={p.id} value={idx}>
+                    {p.full_name} ({p.compositeScore}/100)
+                  </option>
+                ))}
               </select>
             </div>
-            <div>
-              <label className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">Player B</label>
-              <select className="mt-1 w-full h-9 px-3 text-sm bg-background border border-input focus:border-cricket-red focus:outline-none" value={compareB} onChange={e => setCompareB(Number(e.target.value))}>
-                {comparePlayers.map((player, index) => <option key={player.id} value={index}>{player.full_name}</option>)}
+            <div className="stat-card">
+              <label className="text-xs font-semibold text-muted-foreground block mb-1">Select Player B</label>
+              <select
+                className="w-full h-9 bg-background border border-input px-3 text-xs"
+                value={compareB}
+                onChange={(e) => setCompareB(Number(e.target.value))}
+              >
+                {evaluatedPlayers.map((p, idx) => (
+                  <option key={p.id} value={idx}>
+                    {p.full_name} ({p.compositeScore}/100)
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div className="stat-card">
-            <div className="section-title">Performance Comparison</div>
-            <ResponsiveContainer width="100%" height={280}>
-              <RadarChart data={radarCompareData}>
-                <PolarGrid stroke="var(--border)" />
-                <PolarAngleAxis dataKey="stat" tick={{ fontSize: 10 }} />
-                <PolarRadiusAxis tick={{ fontSize: 9 }} />
-                <Radar dataKey="a" stroke="var(--cricket-red)" fill="var(--cricket-red)" fillOpacity={0.2} />
-                <Radar dataKey="b" stroke="var(--cricket-green)" fill="var(--cricket-green)" fillOpacity={0.2} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <table className="data-table">
-            <thead>
-              <tr><th>Metric</th><th>{playerA?.full_name ?? "Player A"}</th><th>{playerB?.full_name ?? "Player B"}</th></tr>
-            </thead>
-            <tbody>
-              {[
-                { stat: "Runs", a: seasonLookup.get(playerA?.id ?? "")?.runs ?? 0, b: seasonLookup.get(playerB?.id ?? "")?.runs ?? 0 },
-                { stat: "Strike Rate", a: seasonLookup.get(playerA?.id ?? "")?.strike_rate ?? 0, b: seasonLookup.get(playerB?.id ?? "")?.strike_rate ?? 0 },
-                { stat: "Impact / 10", a: average(playerAReviews.map((item) => item.match_impact_rating)).toFixed(1), b: average(playerBReviews.map((item) => item.match_impact_rating)).toFixed(1) },
-                { stat: "Confidence / 10", a: average(playerAReviews.map((item) => item.self_confidence_rating)).toFixed(1), b: average(playerBReviews.map((item) => item.self_confidence_rating)).toFixed(1) },
-                { stat: "Coach score / 10", a: average(playerAReviews.map((item) => item.coach_rating)).toFixed(1), b: average(playerBReviews.map((item) => item.coach_rating)).toFixed(1) },
-              ].map((row) => (
-                <tr key={row.stat}>
-                  <td className="font-semibold">{row.stat}</td>
-                  <td className="font-mono">{row.a}</td>
-                  <td className="font-mono">{row.b}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {playerA && playerB && (
+            <div className="stat-card">
+              <div className="section-title">
+                {playerA.full_name} vs {playerB.full_name}
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="var(--border)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
+                  <Radar name={playerA.full_name} dataKey="A" stroke="var(--cricket-red)" fill="var(--cricket-red)" fillOpacity={0.4} />
+                  <Radar name={playerB.full_name} dataKey="B" stroke="var(--cricket-green)" fill="var(--cricket-green)" fillOpacity={0.4} />
+                  <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", fontSize: 11 }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       )}
 
       {tab === "simulation" && (
-        <div className="space-y-5">
-          <div className="tactical-card">
-            <div className="section-title flex items-center gap-1"><Zap className="w-3 h-3" /> Match Projection</div>
-            <p className="text-xs text-muted-foreground mb-4">Projection reacts to confidence, coach review, and recent impact data from completed matches.</p>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="stat-card text-center border-cricket-green" style={{ borderColor: "var(--cricket-green)" }}>
-                <div className="text-3xl font-bold font-mono text-cricket-green">{Math.round(winProbability)}%</div>
-                <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase mt-1">Projected win chance</div>
-              </div>
-              <div className="stat-card text-center">
-                <div className="text-3xl font-bold font-mono">{predictedScore}</div>
-                <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase mt-1">Projected core score</div>
-              </div>
-              <div className="stat-card text-center">
-                <div className="text-3xl font-bold font-mono">{average((matchStatsQuery.data ?? []).map((item) => item.coach_rating)).toFixed(1)}</div>
-                <div className="text-[0.6rem] font-semibold text-muted-foreground uppercase mt-1">Coach stability score</div>
-              </div>
-            </div>
+        <div className="stat-card space-y-4">
+          <div className="section-title flex items-center gap-1">
+            <Zap className="w-4 h-4 text-cricket-red" /> Win Projection & Match Simulation
           </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="stat-card">
-              <div className="section-title">Projected factors</div>
-              {[
-                { factor: "Confidence carry-over", impact: average((matchStatsQuery.data ?? []).map((item) => item.self_confidence_rating)) * 10 },
-                { factor: "Coach trust", impact: average((matchStatsQuery.data ?? []).map((item) => item.coach_rating)) * 10 },
-                { factor: "Impact consistency", impact: average((matchStatsQuery.data ?? []).map((item) => item.match_impact_rating)) * 10 },
-                { factor: "Review coverage", impact: reviewCoverage },
-              ].map((item) => (
-                <div key={item.factor} className="flex items-center gap-3 py-1.5">
-                  <div className="flex-1 text-xs">{item.factor}</div>
-                  <div className="w-24 h-1.5 bg-accent"><div className="h-full bg-cricket-red" style={{ width: `${item.impact}%` }} /></div>
-                  <div className="text-xs font-mono w-10 text-right">{Math.round(item.impact)}%</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="stat-card">
-              <div className="section-title">Scenario notes</div>
-              {[
-                `If "${commonPositives[0]?.label ?? "your strongest pattern"}" repeats, finishing quality should improve.`,
-                `If "${commonMistakes[0]?.label ?? "the top recurring error"}" is corrected, projected stability lifts immediately.`,
-                `Higher review coverage improves the next selection cycle because the model sees more context per player.`,
-                `Coach ratings and player confidence are currently the two strongest non-score predictors in this analysis flow.`,
-              ].map((item) => (
-                <div key={item} className="py-1.5 border-b border-border last:border-0 text-xs text-muted-foreground">
-                  {item}
-                </div>
-              ))}
+          <div className="flex items-center gap-4">
+            <div className="text-4xl font-bold font-mono text-cricket-red">{winProbability}%</div>
+            <div className="text-xs text-muted-foreground">
+              Estimated win probability based on overall coach ratings, player confidence, and match impact history.
             </div>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function average(values: number[]) {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function aggregateTags(tags: string[]) {
-  const counts = new Map<string, number>();
-  for (const tag of tags) {
-    counts.set(tag, (counts.get(tag) ?? 0) + 1);
-  }
-  return [...counts.entries()]
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count);
 }
